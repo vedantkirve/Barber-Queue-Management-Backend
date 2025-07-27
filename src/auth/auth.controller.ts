@@ -12,6 +12,8 @@ export class AuthController {
     @Body() user: User,
     @Res({ passthrough: true }) res: Response, // ✅ Removed extra paren
   ) {
+    console.log('user-->>', user);
+
     const { user: createdUser, token } = await this.authService.register(user); // ✅ Await and rename to avoid shadowing
 
     res.cookie('access_token', token, {
@@ -29,6 +31,8 @@ export class AuthController {
     @Body() userDetails: Record<string, any>,
     @Res({ passthrough: true }) res: Response,
   ) {
+    console.log('userDetails-->>', userDetails);
+
     const { user, token } = await this.authService.login(userDetails);
 
     res.cookie('access_token', token, {
