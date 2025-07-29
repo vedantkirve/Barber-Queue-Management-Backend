@@ -2,11 +2,13 @@ import { Body, Controller, Post, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { User } from '@prisma/client';
 import { Response } from 'express'; // ✅ Import Response type from express
+import { Public } from './decorators/is-public.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('register')
   async register(
     @Body() user: User,
@@ -26,6 +28,7 @@ export class AuthController {
     return createdUser;
   }
 
+  @Public()
   @Post('login')
   async login(
     @Body() userDetails: Record<string, any>,
