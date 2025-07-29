@@ -25,7 +25,7 @@ export class AuthController {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return createdUser;
+    return { ...createdUser, token };
   }
 
   @Public()
@@ -45,6 +45,6 @@ export class AuthController {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return user;
+    return { ...user, token };
   }
 }
