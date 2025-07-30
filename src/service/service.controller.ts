@@ -1,13 +1,14 @@
-import { Controller, Post } from '@nestjs/common';
-import { Public } from '../auth/decorators/is-public.decorator';
+import { Controller, Post, Body, Request } from '@nestjs/common';
+import { ServiceService } from './service.service';
 
 @Controller('service')
 export class ServiceController {
-  // Controller methods will go here
+  constructor(private readonly serviceService: ServiceService) {}
 
-  @Public()
-  @Post('example')
-  exampleMethod() {
-    return { message: 'This is an example endpoint' };
+  @Post('create')
+  async createService(@Body() createServiceDto: any, @Request() req: any) {
+    // TODO: Add proper DTO validation
+    const userId = req.user.userId;
+    return this.serviceService.createService(createServiceDto, userId);
   }
 }
