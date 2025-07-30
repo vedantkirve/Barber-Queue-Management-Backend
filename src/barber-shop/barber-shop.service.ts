@@ -37,4 +37,22 @@ export class BarberShopService {
 
     return barberShop;
   }
+
+  async verifyShopOwnership(barberShopId: string, userId: string) {
+    const barberShop = await this.prisma.barberShop.findFirst({
+      where: {
+        id: barberShopId,
+        userId: userId,
+        status: 'active',
+      },
+    });
+
+    if (!barberShop) {
+      throw new NotFoundException(
+        'Barber shop not found or you do not have permission to access this shop',
+      );
+    }
+
+    return barberShop;
+  }
 }
