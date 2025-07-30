@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { BarberShop, Prisma } from '@prisma/client';
 
 @Injectable()
 export class BarberShopService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createShop(createShopDto: any, userId: string) {
-    // TODO: Add proper DTO validation
     const { name, address, latitude, longitude, isOpen = true } = createShopDto;
 
     const barberShop = await this.prisma.barberShop.create({
@@ -17,6 +17,7 @@ export class BarberShopService {
         latitude,
         longitude,
         isOpen,
+        status: 'active',
       },
     });
 
@@ -38,8 +39,13 @@ export class BarberShopService {
     return barberShop;
   }
 
-  async verifyShopOwnership(barberShopId: string, userId: string) {
-    const barberShop = await this.prisma.barberShop.findFirst({
+  // Updated to always require prisma instance
+  async verifyShopOwnership(
+    barberShopId: string,
+    userId: string,
+    prisma: Prisma.TransactionClient,
+  ): Promise<BarberShop | null> {
+    const barberShop = await prisma.barberShop.findFirst({
       where: {
         id: barberShopId,
         userId: userId,

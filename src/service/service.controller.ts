@@ -1,14 +1,45 @@
-import { Controller, Post, Body, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Request,
+  BadRequestException,
+} from '@nestjs/common';
 import { ServiceService } from './service.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { NotFoundException } from '@nestjs/common';
 
 @Controller('service')
 export class ServiceController {
-  constructor(private readonly serviceService: ServiceService) {}
+  constructor(
+    private readonly serviceService: ServiceService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Post('create')
   async createService(@Body() createServiceDto: any, @Request() req: any) {
-    // TODO: Add proper DTO validation
-    const userId = req.user.userId;
-    return this.serviceService.createService(createServiceDto, userId);
+    try {
+      const userId = req.user.userId;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        return await this.serviceService.createService(
+          createServiceDto,
+          userId,
+          prisma,
+        );
+      });
+    } catch (error) {
+      // Handle specific exceptions
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      // Handle unexpected errors
+      console.error('Service creation failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to create service',
+        error: 'Internal server error',
+      });
+    }
   }
 }

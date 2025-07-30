@@ -1,46 +1,40 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BarberShopService } from '../barber-shop/barber-shop.service';
-
+import { Prisma } from '@prisma/client';
 @Injectable()
 export class ServiceService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly barberShopService: BarberShopService, // Inject BarberShopService
+    private readonly barberShopService: BarberShopService,
   ) {}
 
-  async createService(createServiceDto: any, userId: string) {
-    try {
-      const { barberShopId, serviceName, price, estimatedTime } =
-        createServiceDto;
+  async createService(
+    createServiceDto: any,
+    userId: string,
+    prisma: Prisma.TransactionClient,
+  ) {
+    const { barberShopId, serviceName, price, estimatedTime } =
+      createServiceDto;
 
-      // Use BarberShopService to verify ownership
-      await this.barberShopService.verifyShopOwnership(barberShopId, userId);
+    // Verify shop ownership with transaction prisma
+    await this.barberShopService.verifyShopOwnership(
+      barberShopId,
+      userId,
+      prisma,
+    );
 
-      // Create the service
-      const service = await this.prisma.service.create({
-        data: {
-          barberShopId,
-          serviceName,
-          price,
-          estimatedTime,
-          status: 'active',
-        },
-      });
+    // Create the service with transaction prisma
+    const service = await prisma.service.create({
+      data: {
+        barberShopId,
+        serviceName,
+        price,
+        estimatedTime,
+        status: 'active',
+      },
+    });
 
-      return service;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new BadRequestException({
-        message: 'Failed to create service',
-        error: error?.message || error,
-      });
-    }
+    return service;
   }
 }
