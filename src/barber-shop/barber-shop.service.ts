@@ -53,7 +53,7 @@ export class BarberShopService {
       },
     });
 
-    if (!barberShop) {
+    if (barberShop) {
       throw new NotFoundException(
         'Barber shop not found or you do not have permission to access this shop',
       );

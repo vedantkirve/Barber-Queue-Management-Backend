@@ -4,10 +4,10 @@ import {
   Body,
   Request,
   BadRequestException,
+  HttpException,
 } from '@nestjs/common';
 import { ServiceService } from './service.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
 
 @Controller('service')
 export class ServiceController {
@@ -30,10 +30,9 @@ export class ServiceController {
       });
     } catch (error) {
       // Handle specific exceptions
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
-
       // Handle unexpected errors
       console.error('Service creation failed:', error);
       throw new BadRequestException({
