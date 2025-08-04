@@ -15,7 +15,8 @@ export class VisitService {
   ) {}
 
   async createVisit(createVisitDto: any, userId: string, prisma: any) {
-    const { barberShopId, services, totalAmount } = createVisitDto;
+    const { barberShopId, services, totalAmount, customerInfo } =
+      createVisitDto;
 
     // 1. Check if valid shop exists using BarberShopService
     const shop = await this.barberShopService.getShop(barberShopId, prisma);
@@ -40,17 +41,35 @@ export class VisitService {
       });
     }
 
-    // 3. Create the visit
+    // 3. Handle user creation for unregistered customers
+    let visitUserId = createVisitDto.userId || null;
+
+    if (!visitUserId && customerInfo) {
+      // Create new user for walk-in customer
+      const newUser = await prisma.user.create({
+        data: {
+          firstName: customerInfo.firstName,
+          lastName: customerInfo.lastName,
+          email: customerInfo.email || null,
+          phoneNumber: customerInfo.phoneNumber || null,
+          password: null, // No password for walk-in customers
+          role: 'customer',
+        },
+      });
+      visitUserId = newUser.id;
+    }
+
+    // 4. Create the visit
     const visit: Visit = await prisma.visit.create({
       data: {
-        userId: createVisitDto.userId || null, // Optional for walk-in customers
+        userId: visitUserId,
         barberShopId,
         totalAmount,
         status: 'completed',
       },
     });
 
-    // 4. Create visit services
+    // 5. Create visit services
     const visitServices = await Promise.all(
       services.map(async (service: any) => {
         return await prisma.visitService.create({
@@ -71,6 +90,7 @@ export class VisitService {
         name: shop.name,
         address: shop.address,
       },
+      customer: visitUserId ? { id: visitUserId } : null,
     };
   }
 }
