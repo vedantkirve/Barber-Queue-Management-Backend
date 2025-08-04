@@ -48,4 +48,18 @@ export class UserService {
       });
     }
   }
+
+  async createUnregisteredUser(customerInfo: any, prisma: any) {
+    return await prisma.user.create({
+      data: {
+        firstName: customerInfo.firstName,
+        lastName: customerInfo.lastName,
+        email: customerInfo.email || null,
+        phoneNumber: customerInfo.phoneNumber || null,
+        password: null, // No password for walk-in customers
+        role: 'customer',
+        status: 'active',
+      },
+    });
+  }
 }
