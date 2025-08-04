@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BarberShopService } from '../barber-shop/barber-shop.service';
+import { UserService } from '../user/user.service';
 import { Visit } from '@prisma/client';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class VisitService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly barberShopService: BarberShopService,
+    private readonly userService: UserService,
   ) {}
 
   async createVisit(createVisitDto: any, userId: string, prisma: any) {
@@ -45,17 +47,11 @@ export class VisitService {
     let visitUserId = createVisitDto.userId || null;
 
     if (!visitUserId && customerInfo) {
-      // Create new user for walk-in customer
-      const newUser = await prisma.user.create({
-        data: {
-          firstName: customerInfo.firstName,
-          lastName: customerInfo.lastName,
-          email: customerInfo.email || null,
-          phoneNumber: customerInfo.phoneNumber || null,
-          password: null, // No password for walk-in customers
-          role: 'customer',
-        },
-      });
+      // Create new user for walk-in customer using UserService
+      const newUser = await this.userService.createUnregisteredUser(
+        customerInfo,
+        prisma,
+      );
       visitUserId = newUser.id;
     }
 

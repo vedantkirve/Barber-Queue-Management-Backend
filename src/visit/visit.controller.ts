@@ -36,7 +36,7 @@ export class VisitController {
       console.error('Visit creation failed:', error);
       throw new BadRequestException({
         message: 'Failed to create visit',
-        error: 'Internal server error',
+        error: error,
       });
     }
   }
