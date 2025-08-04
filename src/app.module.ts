@@ -5,9 +5,18 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { ServiceModule } from './service/service.module';
 import { BarberShopModule } from './barber-shop/barber-shop.module';
+import { VisitModule } from './visit/visit.module';
+import { VisitServiceModule } from './visit-service/visit-service.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, ServiceModule, BarberShopModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    ServiceModule,
+    BarberShopModule,
+    VisitModule,
+    VisitServiceModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
