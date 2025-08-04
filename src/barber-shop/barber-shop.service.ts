@@ -39,6 +39,27 @@ export class BarberShopService {
     return barberShop;
   }
 
+  // New function to get shop with services
+  async getShop(barberShopId: string, prisma: any) {
+    const barberShop = await prisma.barberShop.findUnique({
+      where: {
+        id: barberShopId,
+        status: 'active',
+      },
+      include: {
+        services: {
+          where: { status: 'active' },
+        },
+      },
+    });
+
+    if (!barberShop) {
+      throw new NotFoundException('Barber shop not found');
+    }
+
+    return barberShop;
+  }
+
   // Updated to always require prisma instance
   async verifyShopOwnership(
     barberShopId: string,
