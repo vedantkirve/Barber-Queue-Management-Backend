@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BarberShopService } from '../barber-shop/barber-shop.service';
 import { UserService } from '../user/user.service';
 import { Visit } from '@prisma/client';
+import { CreateVisitDto } from './dto/create-visit.dto';
 
 @Injectable()
 export class VisitService {
@@ -16,7 +17,11 @@ export class VisitService {
     private readonly userService: UserService,
   ) {}
 
-  async createVisit(createVisitDto: any, userId: string, prisma: any) {
+  async createVisit(
+    createVisitDto: CreateVisitDto,
+    userId: string,
+    prisma: any,
+  ) {
     const { barberShopId, services, totalAmount, customerInfo } =
       createVisitDto;
 

@@ -5,9 +5,12 @@ import {
   Request,
   BadRequestException,
   HttpException,
+  UsePipes,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { VisitService } from './visit.service';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { CreateVisitSchema, CreateVisitDto } from './dto/create-visit.dto';
 
 @Controller('visit')
 export class VisitController {
@@ -17,7 +20,11 @@ export class VisitController {
   ) {}
 
   @Post('create')
-  async createVisit(@Body() createVisitDto: any, @Request() req: any) {
+  @UsePipes(new ZodValidationPipe(CreateVisitSchema))
+  async createVisit(
+    @Body() createVisitDto: CreateVisitDto,
+    @Request() req: any,
+  ) {
     try {
       const userId = req.user?.userId;
 
