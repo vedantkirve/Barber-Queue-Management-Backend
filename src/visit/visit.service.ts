@@ -49,7 +49,7 @@ export class VisitService {
     }
 
     // 3. Handle user creation for unregistered customers
-    let visitUserId = createVisitDto.userId || null;
+    let visitUserId = customerInfo?.userId || null;
 
     if (!visitUserId && customerInfo) {
       // Create new user for walk-in customer using UserService

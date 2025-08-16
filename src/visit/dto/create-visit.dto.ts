@@ -8,16 +8,16 @@ export const ServiceSchema = z.object({
 
 export const CustomerInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
+  lastName: z.string().optional(),
   email: z.string().email('Invalid email format').optional(),
   phoneNumber: z.string().optional(),
+  userId: z.string().uuid('User ID must be a valid UUID').optional(),
 });
 
 export const CreateVisitSchema = z.object({
   barberShopId: z.string().uuid('Barber shop ID must be a valid UUID'),
   totalAmount: z.number().positive('Total amount must be a positive number'),
-  userId: z.string().uuid('User ID must be a valid UUID').optional(),
-  customerInfo: CustomerInfoSchema.optional(),
+  customerInfo: CustomerInfoSchema,
   services: z.array(ServiceSchema).min(1, 'At least one service is required'),
 });
 
