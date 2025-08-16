@@ -82,4 +82,35 @@ export class BarberShopService {
 
     return barberShop;
   }
+
+  // Get all shops related to a user ID
+  async getAllShopsByUserId(userId: string, prisma: any) {
+    const shops = await prisma.barberShop.findMany({
+      where: {
+        userId,
+        status: 'active',
+      },
+      include: {
+        services: {
+          where: { status: 'active' },
+          select: {
+            id: true,
+            serviceName: true,
+            price: true,
+            estimatedTime: true,
+          },
+        },
+        _count: {
+          select: {
+            visits: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return shops;
+  }
 }
