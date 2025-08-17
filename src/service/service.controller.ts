@@ -17,7 +17,7 @@ import {
   SearchServicesQueryDto,
 } from './dto/search-services-query.dto';
 
-@Controller('services')
+@Controller('service')
 export class ServiceController {
   constructor(
     private readonly serviceService: ServiceService,

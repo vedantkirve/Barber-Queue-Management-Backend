@@ -94,4 +94,94 @@ export class VisitService {
       customer: visitUserId ? { id: visitUserId } : null,
     };
   }
+
+  // Get all visits by barber shop ID or user ID
+  async getVisitsByBarberShopOrUser(
+    prisma: any,
+    barberShopId?: string,
+    userId?: string,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    if (!barberShopId && !userId) {
+      throw new BadRequestException(
+        'Either barberShopId or userId must be provided',
+      );
+    }
+
+    const whereClause: any = {};
+
+    if (barberShopId) {
+      whereClause.barberShopId = barberShopId;
+    }
+
+    if (userId) {
+      whereClause.userId = userId;
+    }
+
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination metadata
+    const totalCount = await prisma.visit.count({
+      where: whereClause,
+    });
+
+    // Get paginated visits
+    const visits = await prisma.visit.findMany({
+      where: whereClause,
+      include: {
+        barberShop: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+        visitServices: {
+          include: {
+            service: {
+              select: {
+                id: true,
+                serviceName: true,
+                price: true,
+                estimatedTime: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip,
+      take: limit,
+    });
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return {
+      visits,
+      pagination: {
+        currentPage: page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
+    };
+  }
 }
