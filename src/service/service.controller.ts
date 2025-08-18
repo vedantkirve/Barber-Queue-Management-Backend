@@ -16,6 +16,10 @@ import {
   SearchServicesQuerySchema,
   SearchServicesQueryDto,
 } from './dto/search-services-query.dto';
+import {
+  UpdateServiceSchema,
+  UpdateServiceDto,
+} from './dto/update-service.dto';
 
 @Controller('service')
 export class ServiceController {
@@ -69,6 +73,35 @@ export class ServiceController {
       console.error('Service search failed:', error);
       throw new BadRequestException({
         message: 'Failed to search services',
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  @Post('update')
+  @UsePipes(new ZodValidationPipe(UpdateServiceSchema))
+  async updateService(
+    @Body() updateServiceDto: UpdateServiceDto,
+    @Request() req: any,
+  ) {
+    try {
+      const userId = req.user.userId;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        return await this.serviceService.updateService(
+          updateServiceDto,
+          userId,
+          prisma,
+        );
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Service update failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to update service',
         error: 'Internal server error',
       });
     }

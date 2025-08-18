@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BarberShopService } from '../barber-shop/barber-shop.service';
 import { Prisma } from '@prisma/client';
 import { SearchServicesQueryDto } from './dto/search-services-query.dto';
+import { UpdateServiceDto } from './dto/update-service.dto';
 
 @Injectable()
 export class ServiceService {
@@ -106,5 +107,61 @@ export class ServiceService {
         sortOrder,
       },
     };
+  }
+
+  async updateService(
+    updateServiceDto: UpdateServiceDto,
+    userId: string,
+    prisma: Prisma.TransactionClient,
+  ) {
+    const { id } = updateServiceDto;
+    // First, find the service to get the barberShopId
+    const existingService = await prisma.service.findUnique({
+      where: { id: id },
+      include: {
+        barberShop: {
+          select: {
+            id: true,
+            userId: true,
+          },
+        },
+      },
+    });
+
+    if (!existingService) {
+      throw new NotFoundException('Service not found');
+    }
+
+    // Verify shop ownership
+    await this.barberShopService.verifyShopOwnership(
+      existingService.barberShopId,
+      userId,
+      prisma,
+    );
+
+    // Update the service
+    const updatedService = await prisma.service.update({
+      where: { id: id },
+      data: {
+        ...(updateServiceDto.serviceName && {
+          serviceName: updateServiceDto.serviceName,
+        }),
+        ...(updateServiceDto.price !== undefined && {
+          price: updateServiceDto.price,
+        }),
+        ...(updateServiceDto.status && { status: updateServiceDto.status }),
+      },
+      include: {
+        barberShop: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+          },
+        },
+      },
+    });
+
+    return updatedService;
   }
 }
