@@ -4,6 +4,7 @@ import { BarberShopService } from '../barber-shop/barber-shop.service';
 import { Prisma } from '@prisma/client';
 import { SearchServicesQueryDto } from './dto/search-services-query.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
+import { CreateMultipleServicesDto } from './dto/create-multiple-services.dto';
 
 @Injectable()
 export class ServiceService {
@@ -39,6 +40,38 @@ export class ServiceService {
     });
 
     return service;
+  }
+
+  async createMultipleServices(
+    createMultipleServicesDto: CreateMultipleServicesDto,
+    userId: string,
+    prisma: Prisma.TransactionClient,
+  ) {
+    const { barberShopId, services } = createMultipleServicesDto;
+
+    // Verify shop ownership with transaction prisma
+    await this.barberShopService.verifyShopOwnership(
+      barberShopId,
+      userId,
+      prisma,
+    );
+
+    // Create all services in parallel
+    const createdServices = await Promise.all(
+      services.map(async (serviceData) => {
+        return await prisma.service.create({
+          data: {
+            barberShopId,
+            serviceName: serviceData.serviceName,
+            price: serviceData.price,
+            estimatedTime: serviceData.estimatedTime,
+            status: 'active',
+          },
+        });
+      }),
+    );
+
+    return createdServices;
   }
 
   async searchServices(

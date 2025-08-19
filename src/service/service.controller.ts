@@ -20,6 +20,10 @@ import {
   UpdateServiceSchema,
   UpdateServiceDto,
 } from './dto/update-service.dto';
+import {
+  CreateMultipleServicesSchema,
+  CreateMultipleServicesDto,
+} from './dto/create-multiple-services.dto';
 
 @Controller('service')
 export class ServiceController {
@@ -48,6 +52,35 @@ export class ServiceController {
       console.error('Service creation failed:', error);
       throw new BadRequestException({
         message: 'Failed to create service',
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  @Post('create-multiple')
+  @UsePipes(new ZodValidationPipe(CreateMultipleServicesSchema))
+  async createMultipleServices(
+    @Body() createMultipleServicesDto: CreateMultipleServicesDto,
+    @Request() req: any,
+  ) {
+    try {
+      const userId = req.user.userId;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        return await this.serviceService.createMultipleServices(
+          createMultipleServicesDto,
+          userId,
+          prisma,
+        );
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Multiple services creation failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to create multiple services',
         error: 'Internal server error',
       });
     }
