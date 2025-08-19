@@ -183,6 +183,9 @@ export class ServiceService {
           price: updateServiceDto.price,
         }),
         ...(updateServiceDto.status && { status: updateServiceDto.status }),
+        ...(updateServiceDto.estimatedTime && {
+          estimatedTime: updateServiceDto.estimatedTime,
+        }),
       },
       include: {
         barberShop: {

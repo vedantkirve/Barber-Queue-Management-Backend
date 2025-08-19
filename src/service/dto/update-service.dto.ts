@@ -5,6 +5,10 @@ export const UpdateServiceSchema = z.object({
   serviceName: z.string().optional(),
   price: z.number().positive('Price must be positive').optional(),
   status: z.enum(['active', 'inactive']).optional(),
+  estimatedTime: z
+    .number()
+    .positive('Estimated time must be positive')
+    .optional(),
 });
 
 export type UpdateServiceDto = z.infer<typeof UpdateServiceSchema>;
