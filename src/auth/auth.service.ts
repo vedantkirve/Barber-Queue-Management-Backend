@@ -4,6 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UserService } from 'src/user/user.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { AuthStatusDto } from './dto/auth-status.dto';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +19,7 @@ export class AuthService {
     const isMatch = await this.comparePasswords(password, user?.password || '');
 
     if (user && isMatch) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
       return result;
     } else {
@@ -46,6 +48,57 @@ export class AuthService {
     const token = this.generateToken({ userId: createdUser.id });
 
     return { user: createdUser, token: token };
+  }
+
+  async validateToken(token: string): Promise<any> {
+    try {
+      const payload = this.jwtService.verify(token);
+      return { isValid: true, payload, isExpired: false };
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return { isValid: false, payload: null, isExpired: true };
+      }
+      return { isValid: false, payload: null, isExpired: false };
+    }
+  }
+
+  async getAuthStatus(req: any): Promise<AuthStatusDto> {
+    // Extract token from cookies or headers
+    const token = req?.cookies?.access_token || req?.headers?.token;
+
+    if (!token) {
+      return {
+        isAuthenticated: false,
+      };
+    }
+
+    // Validate token
+    const tokenValidation = await this.validateToken(token);
+
+    if (!tokenValidation.isValid) {
+      return {
+        isAuthenticated: false,
+      };
+    }
+
+    // Token is valid, get user info
+    const user: User = await this.userService.findOne({
+      id: tokenValidation.payload.userId,
+    });
+
+    if (!user) {
+      return {
+        isAuthenticated: false,
+      };
+    }
+
+    // Exclude password and other sensitive fields
+    const { password, ...safeUser } = user;
+
+    return {
+      isAuthenticated: true,
+      user: safeUser,
+    };
   }
 
   private async hashPassword(password: string): Promise<string> {

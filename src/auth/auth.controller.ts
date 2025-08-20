@@ -1,8 +1,9 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Post, Res, Get, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { User } from '@prisma/client';
-import { Response } from 'express'; // ✅ Import Response type from express
+import { Response, Request } from 'express'; // ✅ Import Response type from express
 import { Public } from './decorators/is-public.decorator';
+import { AuthStatusDto } from './dto/auth-status.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -46,5 +47,11 @@ export class AuthController {
     });
 
     return { ...user, token };
+  }
+
+  @Public()
+  @Get('validate')
+  async validateAuth(@Req() req: Request): Promise<AuthStatusDto> {
+    return this.authService.getAuthStatus(req);
   }
 }

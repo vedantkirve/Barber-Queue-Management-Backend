@@ -24,16 +24,35 @@ export class UserService {
     }
   }
 
-  async findOne(payload: { email: string }) {
+  async findOne(payload: { email?: string; id?: string }): Promise<User> {
     try {
+      // Validate that at least one identifier is provided
+      if (!payload.email && !payload.id) {
+        throw new BadRequestException({
+          message: 'Either email or id must be provided',
+          error: 'Missing identifier',
+        });
+      }
+
+      // Build the where clause based on provided parameters
+      const where: any = {};
+      if (payload.email) {
+        where.email = payload.email;
+      }
+      if (payload.id) {
+        where.id = payload.id;
+      }
+
       const user = await this.prisma.user.findFirst({
-        where: { email: payload.email },
+        where,
       });
 
       if (!user) {
+        const identifier = payload.email || payload.id;
+        const field = payload.email ? 'email' : 'id';
         throw new NotFoundException({
           message: `User not found`,
-          error: `No user with email ${payload.email}`,
+          error: `No user with ${field} ${identifier}`,
         });
       }
 
