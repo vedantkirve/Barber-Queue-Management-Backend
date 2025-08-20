@@ -1,4 +1,4 @@
-import { User } from 'generated/prisma';
+import { User } from '@prisma/client';
 
 // Create a safe user type that excludes sensitive fields
 export type SafeUser = Omit<User, 'password'>;
