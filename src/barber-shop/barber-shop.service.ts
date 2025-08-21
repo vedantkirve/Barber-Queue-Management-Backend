@@ -115,12 +115,8 @@ export class BarberShopService {
     return shops;
   }
 
-  async updateShop(
-    shopId: string,
-    userId: string,
-    updateData: UpdateShopDto,
-    prisma: any,
-  ) {
+  async updateShop(userId: string, updateData: UpdateShopDto, prisma: any) {
+    const { id: shopId, ...updateFields } = updateData;
     // Verify shop ownership
     const existingShop = await this.verifyShopOwnership(shopId, userId, prisma);
 
@@ -133,7 +129,7 @@ export class BarberShopService {
     // Update shop details
     const updatedShop = await prisma.barberShop.update({
       where: { id: shopId },
-      data: updateData,
+      data: updateFields,
       select: {
         id: true,
         name: true,

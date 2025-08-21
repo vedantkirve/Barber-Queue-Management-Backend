@@ -44,19 +44,14 @@ export class BarberShopController {
     });
   }
 
-  @Put(':shopId')
+  @Put('update')
   @UsePipes(new ZodValidationPipe(UpdateShopSchema))
-  async updateShop(
-    @Param('shopId') shopId: string,
-    @Body() updateData: UpdateShopDto,
-    @Request() req: any,
-  ) {
+  async updateShop(@Body() updateData: UpdateShopDto, @Request() req: any) {
     try {
       const userId = req.user?.userId;
 
       return await this.prismaService.$transaction(async (prisma) => {
         return await this.barberShopService.updateShop(
-          shopId,
           userId,
           updateData,
           prisma,
