@@ -54,4 +54,12 @@ export class AuthController {
   async validateAuth(@Req() req: Request): Promise<AuthStatusDto> {
     return this.authService.getAuthStatus(req);
   }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) res: Response) {
+    // Clear the cookie by setting it to expire immediately
+    res.clearCookie('access_token');
+
+    return { message: 'Logged out successfully' };
+  }
 }
