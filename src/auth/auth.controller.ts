@@ -1,8 +1,9 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Post, Res, Get, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { User } from '@prisma/client';
-import { Response } from 'express'; // ✅ Import Response type from express
+import { Response, Request } from 'express'; // ✅ Import Response type from express
 import { Public } from './decorators/is-public.decorator';
+import { AuthStatusDto } from './dto/auth-status.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -25,7 +26,7 @@ export class AuthController {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return createdUser;
+    return { ...createdUser, token };
   }
 
   @Public()
@@ -45,6 +46,20 @@ export class AuthController {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return user;
+    return { ...user, token };
+  }
+
+  @Public()
+  @Get('validate')
+  async validateAuth(@Req() req: Request): Promise<AuthStatusDto> {
+    return this.authService.getAuthStatus(req);
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) res: Response) {
+    // Clear the cookie by setting it to expire immediately
+    res.clearCookie('access_token');
+
+    return { message: 'Logged out successfully' };
   }
 }
