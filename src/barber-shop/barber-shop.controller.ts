@@ -1,6 +1,19 @@
-import { Controller, Post, Get, Body, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Request,
+  Put,
+  Param,
+  BadRequestException,
+  HttpException,
+  UsePipes,
+} from '@nestjs/common';
 import { BarberShopService } from './barber-shop.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { UpdateShopSchema, UpdateShopDto } from './dto/update-shop.dto';
 
 @Controller('barber-shop')
 export class BarberShopController {
@@ -29,5 +42,36 @@ export class BarberShopController {
     return await this.prismaService.$transaction(async (prisma) => {
       return this.barberShopService.getAllShopsByUserId(userId, prisma);
     });
+  }
+
+  @Put(':shopId')
+  @UsePipes(new ZodValidationPipe(UpdateShopSchema))
+  async updateShop(
+    @Param('shopId') shopId: string,
+    @Body() updateData: UpdateShopDto,
+    @Request() req: any,
+  ) {
+    try {
+      const userId = req.user?.userId;
+
+      return await this.prismaService.$transaction(async (prisma) => {
+        return await this.barberShopService.updateShop(
+          shopId,
+          userId,
+          updateData,
+          prisma,
+        );
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Update shop failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to update shop',
+        error: 'Internal server error',
+      });
+    }
   }
 }

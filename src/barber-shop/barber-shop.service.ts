@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BarberShop, Prisma } from '@prisma/client';
+import { UpdateShopDto } from './dto/update-shop.dto';
 
 @Injectable()
 export class BarberShopService {
@@ -112,5 +113,40 @@ export class BarberShopService {
     });
 
     return shops;
+  }
+
+  async updateShop(
+    shopId: string,
+    userId: string,
+    updateData: UpdateShopDto,
+    prisma: any,
+  ) {
+    // Verify shop ownership
+    const existingShop = await this.verifyShopOwnership(shopId, userId, prisma);
+
+    if (!existingShop) {
+      throw new NotFoundException(
+        'Barber shop not found or you do not have permission to update this shop',
+      );
+    }
+
+    // Update shop details
+    const updatedShop = await prisma.barberShop.update({
+      where: { id: shopId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+        isOpen: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return updatedShop;
   }
 }
