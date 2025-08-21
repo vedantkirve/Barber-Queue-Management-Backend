@@ -6,6 +6,7 @@ import {
 import { User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SearchUsersQueryDto } from './dto/search-users-query.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 
 @Injectable()
 export class UserService {
@@ -144,5 +145,90 @@ export class UserService {
         fieldsSearched: ['firstName', 'lastName', 'email', 'phoneNumber'],
       },
     };
+  }
+
+  async getUserProfile(userId: string, prisma: any) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phoneNumber: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException({
+          message: 'User not found',
+          error: 'User does not exist',
+        });
+      }
+
+      return user;
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new BadRequestException({
+        message: 'Error fetching user profile',
+        error: error?.message || error,
+      });
+    }
+  }
+
+  async updateUserProfile(
+    userId: string,
+    updateData: UpdateUserProfileDto,
+    prisma: any,
+  ) {
+    try {
+      // Check if user exists
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!existingUser) {
+        throw new NotFoundException({
+          message: 'User not found',
+          error: 'User does not exist',
+        });
+      }
+
+      // Update user profile
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phoneNumber: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return updatedUser;
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new BadRequestException({
+        message: 'Error updating user profile',
+        error: error?.message || error,
+      });
+    }
   }
 }
