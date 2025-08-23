@@ -20,7 +20,7 @@ export class AuthController {
     const { user: createdUser, token } = await this.authService.register(user); // ✅ Await and rename to avoid shadowing
 
     res.cookie('access_token', token, {
-      httpOnly: true,
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000,
@@ -40,7 +40,7 @@ export class AuthController {
     const { user, token } = await this.authService.login(userDetails);
 
     res.cookie('access_token', token, {
-      httpOnly: true,
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000,
