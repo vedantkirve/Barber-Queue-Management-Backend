@@ -119,12 +119,8 @@ export class ServiceService {
       }),
     ]);
 
-    if (!services || services.length === 0) {
-      throw new NotFoundException('No services found for this barber shop');
-    }
-
     return {
-      data: services,
+      data: services || [],
       pagination: {
         page,
         limit,
