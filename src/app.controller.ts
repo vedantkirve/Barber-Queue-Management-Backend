@@ -10,6 +10,7 @@ export class AppController {
     return this.appService.getHello();
   }
 
+  @IsPublic()
   @Get('health')
   getHealth(): { status: string; timestamp: string } {
     return {
