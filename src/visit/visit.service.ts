@@ -198,30 +198,26 @@ export class VisitService {
       throw new NotFoundException('Barber shop not found');
     }
 
-    // Get visits grouped by date with revenue
-    const visitsData = await prisma.visit.groupBy({
-      by: ['createdAt'],
-      where: {
-        barberShopId,
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-        status: 'completed',
-      },
-      _count: {
-        id: true, // Count of visits
-      },
-      _sum: {
-        totalAmount: true, // Sum of revenue
-      },
-    });
+    // Get visits grouped by date with revenue using raw SQL for proper date grouping
+    const visitsData = await prisma.$queryRaw`
+    SELECT 
+      DATE("createdAt" AT TIME ZONE 'UTC') as date,
+      COUNT(*) as visits,
+      SUM("totalAmount") as revenue
+    FROM "Visit" 
+    WHERE "barberShopId" = ${barberShopId}
+      AND "createdAt" >= ${startDate}
+      AND "createdAt" < ${new Date(endDate.getTime() + 24 * 60 * 60 * 1000)}
+      AND status = 'completed'
+    GROUP BY DATE("createdAt" AT TIME ZONE 'UTC')
+    ORDER BY DATE("createdAt" AT TIME ZONE 'UTC');
+  `;
 
     // Transform data to include date, visits count, and revenue
     const analyticsData = visitsData.map((item) => ({
-      date: item.createdAt.toISOString().split('T')[0], // Format as YYYY-MM-DD
-      visits: item._count.id,
-      revenue: item._sum.totalAmount || 0,
+      date: item.date.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD string
+      visits: Number(item.visits), // Convert BigInt to Number
+      revenue: Number(item.revenue) || 0, // Ensure revenue is Number
     }));
 
     // Fill in missing dates with zero values
