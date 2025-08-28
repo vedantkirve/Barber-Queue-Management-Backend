@@ -184,4 +184,95 @@ export class VisitService {
       },
     };
   }
+
+  // Get analytics data for visits and revenue by date range
+  async getAnalytics(
+    prisma: any,
+    startDate: Date,
+    endDate: Date,
+    barberShopId: string,
+  ) {
+    // Validate barber shop exists
+    const shop = await this.barberShopService.getShop(barberShopId, prisma);
+    if (!shop) {
+      throw new NotFoundException('Barber shop not found');
+    }
+
+    // Get visits grouped by date with revenue using raw SQL for proper date grouping
+    const visitsData = await prisma.$queryRaw`
+    SELECT 
+      DATE("createdAt" AT TIME ZONE 'UTC') as date,
+      COUNT(*) as visits,
+      SUM("totalAmount") as revenue
+    FROM "Visit" 
+    WHERE "barberShopId" = ${barberShopId}
+      AND "createdAt" >= ${startDate}
+      AND "createdAt" < ${new Date(endDate.getTime() + 24 * 60 * 60 * 1000)}
+      AND status = 'completed'
+    GROUP BY DATE("createdAt" AT TIME ZONE 'UTC')
+    ORDER BY DATE("createdAt" AT TIME ZONE 'UTC');
+  `;
+
+    // Transform data to include date, visits count, and revenue
+    const analyticsData = visitsData.map((item) => ({
+      date: item.date.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD string
+      visits: Number(item.visits), // Convert BigInt to Number
+      revenue: Number(item.revenue) || 0, // Ensure revenue is Number
+    }));
+
+    // Fill in missing dates with zero values
+    const filledData = this.fillMissingDates(analyticsData, startDate, endDate);
+
+    // Calculate summary statistics
+    const totalVisits = filledData.reduce((sum, item) => sum + item.visits, 0);
+    const totalRevenue = filledData.reduce(
+      (sum, item) => sum + item.revenue,
+      0,
+    );
+    const averageVisitsPerDay = totalVisits / filledData.length;
+    const averageRevenuePerDay = totalRevenue / filledData.length;
+
+    return {
+      data: filledData,
+      summary: {
+        totalVisits,
+        totalRevenue,
+        averageVisitsPerDay: Math.round(averageVisitsPerDay * 100) / 100,
+        averageRevenuePerDay: Math.round(averageRevenuePerDay * 100) / 100,
+        dateRange: {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+        },
+        barberShop: {
+          id: shop.id,
+          name: shop.name,
+        },
+      },
+    };
+  }
+
+  // Helper method to fill missing dates with zero values
+  private fillMissingDates(
+    data: Array<{ date: string; visits: number; revenue: number }>,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    const result = [];
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const existingData = data.find((item) => item.date === dateStr);
+
+      result.push({
+        date: dateStr,
+        visits: existingData?.visits || 0,
+        revenue: existingData?.revenue || 0,
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return result;
+  }
 }
