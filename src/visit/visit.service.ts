@@ -184,4 +184,99 @@ export class VisitService {
       },
     };
   }
+
+  // Get analytics data for visits and revenue by date range
+  async getAnalytics(
+    prisma: any,
+    startDate: Date,
+    endDate: Date,
+    barberShopId: string,
+  ) {
+    // Validate barber shop exists
+    const shop = await this.barberShopService.getShop(barberShopId, prisma);
+    if (!shop) {
+      throw new NotFoundException('Barber shop not found');
+    }
+
+    // Get visits grouped by date with revenue
+    const visitsData = await prisma.visit.groupBy({
+      by: ['createdAt'],
+      where: {
+        barberShopId,
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+        status: 'completed',
+      },
+      _count: {
+        id: true, // Count of visits
+      },
+      _sum: {
+        totalAmount: true, // Sum of revenue
+      },
+    });
+
+    // Transform data to include date, visits count, and revenue
+    const analyticsData = visitsData.map((item) => ({
+      date: item.createdAt.toISOString().split('T')[0], // Format as YYYY-MM-DD
+      visits: item._count.id,
+      revenue: item._sum.totalAmount || 0,
+    }));
+
+    // Fill in missing dates with zero values
+    const filledData = this.fillMissingDates(analyticsData, startDate, endDate);
+
+    // Calculate summary statistics
+    const totalVisits = filledData.reduce((sum, item) => sum + item.visits, 0);
+    const totalRevenue = filledData.reduce(
+      (sum, item) => sum + item.revenue,
+      0,
+    );
+    const averageVisitsPerDay = totalVisits / filledData.length;
+    const averageRevenuePerDay = totalRevenue / filledData.length;
+
+    return {
+      data: filledData,
+      summary: {
+        totalVisits,
+        totalRevenue,
+        averageVisitsPerDay: Math.round(averageVisitsPerDay * 100) / 100,
+        averageRevenuePerDay: Math.round(averageRevenuePerDay * 100) / 100,
+        dateRange: {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+        },
+        barberShop: {
+          id: shop.id,
+          name: shop.name,
+        },
+      },
+    };
+  }
+
+  // Helper method to fill missing dates with zero values
+  private fillMissingDates(
+    data: Array<{ date: string; visits: number; revenue: number }>,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    const result = [];
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const existingData = data.find((item) => item.date === dateStr);
+
+      result.push({
+        date: dateStr,
+        visits: existingData?.visits || 0,
+        revenue: existingData?.revenue || 0,
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return result;
+  }
 }

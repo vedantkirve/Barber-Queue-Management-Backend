@@ -17,6 +17,10 @@ import {
   GetVisitsQuerySchema,
   GetVisitsQueryDto,
 } from './dto/get-visits-query.dto';
+import {
+  AnalyticsQuerySchema,
+  AnalyticsQueryDto,
+} from './dto/analytics-query.dto';
 
 @Controller('visit')
 export class VisitController {
@@ -77,6 +81,33 @@ export class VisitController {
       console.error('Failed to fetch visits:', error);
       throw new BadRequestException({
         message: 'Failed to fetch visits',
+        error: error,
+      });
+    }
+  }
+
+  @Post('analytics')
+  @UsePipes(new ZodValidationPipe(AnalyticsQuerySchema))
+  async getAnalytics(@Body() analyticsQueryDto: AnalyticsQueryDto) {
+    try {
+      const { startDate, endDate, barberShopId } = analyticsQueryDto;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        return await this.visitService.getAnalytics(
+          prisma,
+          startDate,
+          endDate,
+          barberShopId,
+        );
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Failed to fetch analytics:', error);
+      throw new BadRequestException({
+        message: 'Failed to fetch analytics',
         error: error,
       });
     }
