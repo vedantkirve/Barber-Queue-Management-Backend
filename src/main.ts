@@ -6,7 +6,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: '*', // ⚠️ Allows ALL origins
+    origin: true, // ⚠️ Allows ALL origins
     credentials: true, // ✅ Allow sending cookies
   });
   app.use(cookieParser());
