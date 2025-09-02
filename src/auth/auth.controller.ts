@@ -13,16 +13,16 @@ export class AuthController {
   @Post('register')
   async register(
     @Body() user: User,
-    @Res({ passthrough: true }) res: Response, // ✅ Removed extra paren
+    @Res({ passthrough: true }) res: Response,
   ) {
     console.log('user-->>', user);
 
-    const { user: createdUser, token } = await this.authService.register(user); // ✅ Await and rename to avoid shadowing
+    const { user: createdUser, token } = await this.authService.register(user);
 
     res.cookie('access_token', token, {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Always true for HTTPS
+      sameSite: 'none', // Required for cross-origin
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -41,8 +41,8 @@ export class AuthController {
 
     res.cookie('access_token', token, {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Always true for HTTPS
+      sameSite: 'none', // Required for cross-origin
       maxAge: 24 * 60 * 60 * 1000,
     });
 
