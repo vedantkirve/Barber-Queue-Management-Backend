@@ -25,12 +25,16 @@ export class UserService {
     }
   }
 
-  async findOne(payload: { email?: string; id?: string }): Promise<User> {
+  async findOne(payload: {
+    email?: string;
+    id?: string;
+    phoneNumber?: string;
+  }): Promise<User | null> {
     try {
       // Validate that at least one identifier is provided
-      if (!payload.email && !payload.id) {
+      if (!payload.email && !payload.id && !payload.phoneNumber) {
         throw new BadRequestException({
-          message: 'Either email or id must be provided',
+          message: 'Either email or id or phone number must be provided',
           error: 'Missing identifier',
         });
       }
@@ -43,26 +47,16 @@ export class UserService {
       if (payload.id) {
         where.id = payload.id;
       }
+      if (payload.phoneNumber) {
+        where.phoneNumber = payload.phoneNumber;
+      }
 
       const user = await this.prisma.user.findFirst({
         where,
       });
 
-      if (!user) {
-        const identifier = payload.email || payload.id;
-        const field = payload.email ? 'email' : 'id';
-        throw new NotFoundException({
-          message: `User not found`,
-          error: `No user with ${field} ${identifier}`,
-        });
-      }
-
-      return user;
+      return user; // Returns null if not found, user object if found
     } catch (error: any) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
       throw new BadRequestException({
         message: 'Error finding user',
         error: error?.message || error,
@@ -84,6 +78,28 @@ export class UserService {
     } catch (error) {
       console.error('Error finding user by phone number:', error);
       return null;
+    }
+  }
+
+  async findUserByEmailOrPhone(
+    emailOrPhone: string,
+    prisma: any,
+  ): Promise<User[]> {
+    try {
+      console.log('Searching for users with:', emailOrPhone);
+
+      // Get all users with this email or phone
+      const users = await prisma.user.findMany({
+        where: {
+          OR: [{ email: emailOrPhone }, { phoneNumber: emailOrPhone }],
+        },
+      });
+
+      console.log(`Found ${users.length} users`);
+      return users;
+    } catch (error) {
+      console.error('Error finding users by email or phone:', error);
+      return [];
     }
   }
 

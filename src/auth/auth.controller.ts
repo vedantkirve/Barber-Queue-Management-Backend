@@ -1,9 +1,11 @@
-import { Body, Controller, Post, Res, Get, Req } from '@nestjs/common';
+import { Body, Controller, Post, Get, Req, UsePipes } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { User } from '@prisma/client';
-import { Response, Request } from 'express'; // ✅ Import Response type from express
+import { Request } from 'express';
 import { Public } from './decorators/is-public.decorator';
 import { AuthStatusDto } from './dto/auth-status.dto';
+import { LoginDto, LoginSchema } from './dto/login.dto';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 @Controller('auth')
 export class AuthController {
@@ -21,7 +23,8 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  async login(@Body() userDetails: Record<string, any>) {
+  @UsePipes(new ZodValidationPipe(LoginSchema))
+  async login(@Body() userDetails: LoginDto) {
     console.log('userDetails-->>', userDetails);
 
     const { user, token } = await this.authService.login(userDetails);
