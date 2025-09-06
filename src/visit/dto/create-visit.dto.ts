@@ -7,7 +7,7 @@ export const ServiceSchema = z.object({
 });
 
 export const CustomerInfoSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
+  firstName: z.string().optional(),
   lastName: z.string().optional(),
   email: z.string().email('Invalid email format').optional(),
   phoneNumber: z.string().optional(),

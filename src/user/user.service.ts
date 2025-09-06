@@ -70,12 +70,34 @@ export class UserService {
     }
   }
 
+  async findUserByPhoneNumber(
+    phoneNumber: string,
+    prisma: any,
+  ): Promise<User | null> {
+    try {
+      return await prisma.user.findFirst({
+        where: {
+          phoneNumber: phoneNumber,
+          role: 'customer',
+        },
+      });
+    } catch (error) {
+      console.error('Error finding user by phone number:', error);
+      return null;
+    }
+  }
+
   async createUnregisteredUser(customerInfo: any, prisma: any) {
+    // Generate random email if no email provided
+    const randomEmail =
+      customerInfo.email ||
+      `customer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@barbershop.local`;
+
     return await prisma.user.create({
       data: {
-        firstName: customerInfo.firstName,
-        lastName: customerInfo.lastName,
-        email: customerInfo.email || null,
+        firstName: customerInfo.firstName || 'Customer',
+        lastName: customerInfo.lastName || null,
+        email: randomEmail,
         phoneNumber: customerInfo.phoneNumber || null,
         password: null, // No password for walk-in customers
         role: 'customer',
