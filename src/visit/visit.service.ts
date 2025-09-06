@@ -48,15 +48,29 @@ export class VisitService {
       });
     }
 
-    // 3. Handle user creation for unregistered customers
+    // 3. Handle user creation/lookup for customers
     let visitUserId = customerInfo?.userId || null;
 
-    if (!visitUserId && customerInfo) {
-      // Create new user for walk-in customer using UserService
-      const newUser = await this.userService.createUnregisteredUser(
-        customerInfo,
+    if (!visitUserId && customerInfo?.phoneNumber) {
+      // Try to find existing user by phone number
+      const existingUser = await this.userService.findUserByPhoneNumber(
+        customerInfo.phoneNumber,
         prisma,
       );
+
+      if (existingUser) {
+        visitUserId = existingUser.id;
+      } else {
+        // User not found, create new user with phone number
+        const newUser = await this.userService.createUnregisteredUser(
+          { phoneNumber: customerInfo.phoneNumber },
+          prisma,
+        );
+        visitUserId = newUser.id;
+      }
+    } else if (!visitUserId) {
+      // No phone number provided, create new user with random email
+      const newUser = await this.userService.createUnregisteredUser({}, prisma);
       visitUserId = newUser.id;
     }
 

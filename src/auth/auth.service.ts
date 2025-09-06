@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UserService } from 'src/user/user.service';
@@ -14,22 +18,31 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.userService.findOne({ email });
-    const isMatch = await this.comparePasswords(password, user?.password || '');
+  async validateUser(emailOrPhone: string, password: string): Promise<any> {
+    const users = await this.userService.findUserByEmailOrPhone(
+      emailOrPhone,
+      this.prisma,
+    );
 
-    if (user && isMatch) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...result } = user;
-      return result;
-    } else {
-      throw new UnauthorizedException('Invalid email or password');
+    // Check password for each user
+    for (const user of users) {
+      if (user.password) {
+        const isMatch = await this.comparePasswords(password, user.password);
+        if (isMatch) {
+          console.log(`✅ Password match found for user: ${user.email}`);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { password, ...result } = user;
+          return result;
+        }
+      }
     }
+
+    throw new UnauthorizedException('Invalid email/phone or password');
   }
 
   async login(userDetails: any) {
-    const { password, email } = userDetails;
-    const user = await this.validateUser(email, password);
+    const { password, emailOrPhone } = userDetails;
+    const user = await this.validateUser(emailOrPhone, password);
 
     const token = this.generateToken({ userId: user.id });
 
@@ -37,8 +50,20 @@ export class AuthService {
   }
 
   async register(user: User) {
+    // Check if user already exists with the same phone number
+    if (user.phoneNumber) {
+      const existingUser = await this.userService.findOne({
+        phoneNumber: user.phoneNumber,
+      });
+
+      if (existingUser) {
+        throw new BadRequestException(
+          'User already exists with the same phone number',
+        );
+      }
+    }
+
     const hashedPassword = await this.hashPassword(user.password);
-    console.log('hashedPassword-->>', hashedPassword);
 
     const createdUser = await this.userService.createUser({
       ...user,
@@ -93,6 +118,7 @@ export class AuthService {
     }
 
     // Exclude password and other sensitive fields
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...safeUser } = user;
 
     return {

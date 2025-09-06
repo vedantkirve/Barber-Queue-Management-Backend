@@ -16,10 +16,10 @@ datasource db {
 
 model User {
   id          String   @id @default(uuid())
-  phoneNumber String?
-  firstName   String
-  lastName    String
-  email       String?  @unique // Made optional but still unique
+  phoneNumber String?  @unique // Made unique to prevent duplicate phone numbers
+  firstName   String?
+  lastName    String?
+  email       String?
   password    String? // Made optional
   role        Role
   status      String   @default("active")
