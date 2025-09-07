@@ -8,6 +8,7 @@ import {
   UsePipes,
   Get,
   Query,
+  Put,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { VisitService } from './visit.service';
@@ -21,6 +22,7 @@ import {
   AnalyticsQuerySchema,
   AnalyticsQueryDto,
 } from './dto/analytics-query.dto';
+import { DeleteVisitSchema, DeleteVisitDto } from './dto/delete-visit.dto';
 
 @Controller('visit')
 export class VisitController {
@@ -108,6 +110,28 @@ export class VisitController {
       console.error('Failed to fetch analytics:', error);
       throw new BadRequestException({
         message: 'Failed to fetch analytics',
+        error: error,
+      });
+    }
+  }
+
+  @Put('delete')
+  @UsePipes(new ZodValidationPipe(DeleteVisitSchema))
+  async deleteVisit(@Body() deleteVisitDto: DeleteVisitDto) {
+    try {
+      const { visitId } = deleteVisitDto;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        return await this.visitService.deleteVisit(visitId, prisma);
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Failed to deactivate visit:', error);
+      throw new BadRequestException({
+        message: 'Failed to deactivate visit',
         error: error,
       });
     }

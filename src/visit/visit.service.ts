@@ -3,18 +3,19 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+
 import { BarberShopService } from '../barber-shop/barber-shop.service';
 import { UserService } from '../user/user.service';
+import { VisitServiceService } from '../visit-service/visit-service.service';
 import { Visit } from '@prisma/client';
 import { CreateVisitDto } from './dto/create-visit.dto';
 
 @Injectable()
 export class VisitService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly barberShopService: BarberShopService,
     private readonly userService: UserService,
+    private readonly visitServiceService: VisitServiceService,
   ) {}
 
   async createVisit(
@@ -80,7 +81,7 @@ export class VisitService {
         userId: visitUserId,
         barberShopId,
         totalAmount,
-        status: 'completed',
+        status: 'active',
       },
     });
 
@@ -123,7 +124,9 @@ export class VisitService {
       );
     }
 
-    const whereClause: any = {};
+    const whereClause: any = {
+      status: 'active', // Only show active visits
+    };
 
     if (barberShopId) {
       whereClause.barberShopId = barberShopId;
@@ -162,6 +165,7 @@ export class VisitService {
           },
         },
         visitServices: {
+          where: { status: 'active' },
           include: {
             service: {
               select: {
@@ -222,7 +226,7 @@ export class VisitService {
     WHERE "barberShopId" = ${barberShopId}
       AND "createdAt" >= ${startDate}
       AND "createdAt" < ${new Date(endDate.getTime() + 24 * 60 * 60 * 1000)}
-      AND status = 'completed'
+      AND status = 'active'
     GROUP BY DATE("createdAt" AT TIME ZONE 'UTC')
     ORDER BY DATE("createdAt" AT TIME ZONE 'UTC');
   `;
@@ -263,6 +267,29 @@ export class VisitService {
         },
       },
     };
+  }
+
+  // Deactivate visit and its associated visit services
+  async deleteVisit(visitId: string, prisma: any) {
+    // Check if the visit exists
+    const existingVisit = await prisma.visit.findUnique({
+      where: { id: visitId },
+    });
+
+    if (!existingVisit) {
+      throw new NotFoundException('Visit not found');
+    }
+
+    // Deactivate all visit services for this visit
+    await this.visitServiceService.deactivateVisitServices(visitId, prisma);
+
+    // Deactivate the visit
+    const deactivatedVisit = await prisma.visit.update({
+      where: { id: visitId },
+      data: { status: 'inactive' },
+    });
+
+    return deactivatedVisit;
   }
 
   // Helper method to fill missing dates with zero values
