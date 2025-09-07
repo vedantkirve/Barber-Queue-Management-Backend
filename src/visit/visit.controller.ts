@@ -119,10 +119,10 @@ export class VisitController {
   @UsePipes(new ZodValidationPipe(DeleteVisitSchema))
   async deleteVisit(@Body() deleteVisitDto: DeleteVisitDto) {
     try {
-      const { visitId } = deleteVisitDto;
+      const { id } = deleteVisitDto;
 
       return await this.prisma.$transaction(async (prisma) => {
-        return await this.visitService.deleteVisit(visitId, prisma);
+        return await this.visitService.deleteVisit(id, prisma);
       });
     } catch (error) {
       if (error instanceof HttpException) {

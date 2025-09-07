@@ -273,7 +273,7 @@ export class VisitService {
   async deleteVisit(visitId: string, prisma: any) {
     // Check if the visit exists
     const existingVisit = await prisma.visit.findUnique({
-      where: { id: visitId },
+      where: { id: visitId, status: 'active' },
     });
 
     if (!existingVisit) {
