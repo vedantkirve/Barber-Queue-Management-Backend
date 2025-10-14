@@ -50,6 +50,7 @@ model BarberShop {
   user     User      @relation(fields: [userId], references: [id])
   services Service[]
   visits   Visit[] // Add relation to visits
+  shopQueues ShopQueue[] // Add relation to shop queues
 }
 
 model Service {
@@ -74,6 +75,8 @@ model Visit {
   status       String   @default("active")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  shopQueueId  String?     @unique // Optional - for linking to ShopQueue (one-to-one)
+  shopQueue    ShopQueue?  @relation(fields: [shopQueueId], references: [id])
 
   user          User?          @relation(fields: [userId], references: [id])
   barberShop    BarberShop     @relation(fields: [barberShopId], references: [id])
@@ -93,4 +96,27 @@ model VisitService {
   service Service @relation(fields: [serviceId], references: [id])
 
   @@unique([visitId, serviceId]) // Prevent duplicate services in same visit
+}
+
+model ShopQueue {
+  id            String      @id @default(uuid())
+  barberShopId  String
+  userId        String      // Reference to user (no relation)
+  state         QueueState  @default(in_queue)
+  joinedAt      DateTime    @default(now())
+  servedAt      DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  status        String      @default("active") // Add status field for soft delete
+
+  barberShop    BarberShop  @relation(fields: [barberShopId], references: [id])
+  visit         Visit?      // One-to-one relation with Visit
+
+  @@index([barberShopId, state])
+}
+
+enum QueueState {
+  in_queue
+  picked
+  served
 }
