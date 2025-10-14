@@ -25,11 +25,14 @@ export class UserService {
     }
   }
 
-  async findOne(payload: {
-    email?: string;
-    id?: string;
-    phoneNumber?: string;
-  }): Promise<User | null> {
+  async findOne(
+    payload: {
+      email?: string;
+      id?: string;
+      phoneNumber?: string;
+    },
+    prisma?: any,
+  ): Promise<User | null> {
     try {
       // Validate that at least one identifier is provided
       if (!payload.email && !payload.id && !payload.phoneNumber) {
@@ -51,7 +54,9 @@ export class UserService {
         where.phoneNumber = payload.phoneNumber;
       }
 
-      const user = await this.prisma.user.findFirst({
+      // Use provided prisma client or default to this.prisma
+      const client = prisma || this.prisma;
+      const user = await client.user.findFirst({
         where,
       });
 
