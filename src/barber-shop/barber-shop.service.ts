@@ -61,6 +61,50 @@ export class BarberShopService {
     return barberShop;
   }
 
+  // Get shop details with services for public view
+  async getShopDetails(barberShopId: string, prisma: any) {
+    const barberShop = await prisma.barberShop.findUnique({
+      where: {
+        id: barberShopId,
+        status: 'active',
+      },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+        isOpen: true,
+        createdAt: true,
+        updatedAt: true,
+        services: {
+          where: { status: 'active' },
+          select: {
+            id: true,
+            serviceName: true,
+            price: true,
+            estimatedTime: true,
+            createdAt: true,
+          },
+          orderBy: {
+            price: 'asc',
+          },
+        },
+        _count: {
+          select: {
+            visits: true,
+          },
+        },
+      },
+    });
+
+    if (!barberShop) {
+      throw new NotFoundException('Barber shop not found');
+    }
+
+    return barberShop;
+  }
+
   // Updated to always require prisma instance
   async verifyShopOwnership(
     barberShopId: string,

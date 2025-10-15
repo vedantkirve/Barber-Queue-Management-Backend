@@ -6,6 +6,7 @@ import {
   Request,
   Put,
   Query,
+  Param,
   BadRequestException,
   HttpException,
   UsePipes,
@@ -81,7 +82,6 @@ export class BarberShopController {
 
   @Public()
   @Get('all')
-  @Get('all')
   @UsePipes(new ZodValidationPipe(GetAllShopsQuerySchema))
   async getAllShops(@Query() query: GetAllShopsQueryDto) {
     try {
@@ -99,6 +99,29 @@ export class BarberShopController {
       console.error('Get all shops failed:', error);
       throw new BadRequestException({
         message: 'Failed to get shops',
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  @Public()
+  @Get(':id')
+  async getShopDetails(@Param('id') barberShopId: string) {
+    try {
+      return await this.prismaService.$transaction(async (prisma) => {
+        return await this.barberShopService.getShopDetails(
+          barberShopId,
+          prisma,
+        );
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Get shop details failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to get shop details',
         error: 'Internal server error',
       });
     }
