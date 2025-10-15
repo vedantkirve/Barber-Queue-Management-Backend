@@ -145,4 +145,122 @@ export class BarberShopService {
 
     return updatedShop;
   }
+
+  // Get all shops with pagination
+  async getAllShops(page: number, limit: number, prisma: any) {
+    const skip = (page - 1) * limit;
+
+    const [shops, total] = await Promise.all([
+      prisma.barberShop.findMany({
+        where: {
+          status: 'active',
+        },
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          isOpen: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              services: {
+                where: { status: 'active' },
+              },
+              visits: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.barberShop.count({
+        where: {
+          status: 'active',
+        },
+      }),
+    ]);
+
+    return {
+      data: shops,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // Search shops by name or address
+  async searchShops(dto: any, prisma: any) {
+    const { query, page = 1, limit = 10 } = dto;
+
+    const skip = (page - 1) * limit;
+
+    const whereClause = {
+      status: 'active',
+      OR: [
+        {
+          name: {
+            contains: query,
+            mode: 'insensitive' as any,
+          },
+        },
+        {
+          address: {
+            contains: query,
+            mode: 'insensitive' as any,
+          },
+        },
+      ],
+    };
+
+    const [shops, total] = await Promise.all([
+      prisma.barberShop.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          isOpen: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              services: {
+                where: { status: 'active' },
+              },
+              visits: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.barberShop.count({
+        where: whereClause,
+      }),
+    ]);
+
+    return {
+      data: shops,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 }

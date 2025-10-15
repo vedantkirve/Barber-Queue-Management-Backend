@@ -5,7 +5,7 @@ import {
   Body,
   Request,
   Put,
-  Param,
+  Query,
   BadRequestException,
   HttpException,
   UsePipes,
@@ -14,6 +14,15 @@ import { BarberShopService } from './barber-shop.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { UpdateShopSchema, UpdateShopDto } from './dto/update-shop.dto';
+import {
+  GetAllShopsQuerySchema,
+  GetAllShopsQueryDto,
+} from './dto/get-all-shops.dto';
+import {
+  SearchShopsQuerySchema,
+  SearchShopsQueryDto,
+} from './dto/search-shops.dto';
+import { Public } from 'src/auth/decorators/is-public.decorator';
 
 @Controller('barber-shop')
 export class BarberShopController {
@@ -65,6 +74,52 @@ export class BarberShopController {
       console.error('Update shop failed:', error);
       throw new BadRequestException({
         message: 'Failed to update shop',
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  @Public()
+  @Get('all')
+  @Get('all')
+  @UsePipes(new ZodValidationPipe(GetAllShopsQuerySchema))
+  async getAllShops(@Query() query: GetAllShopsQueryDto) {
+    try {
+      const page = query.page || 1;
+      const limit = query.limit || 10;
+
+      return await this.prismaService.$transaction(async (prisma) => {
+        return await this.barberShopService.getAllShops(page, limit, prisma);
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Get all shops failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to get shops',
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  @Public()
+  @Post('search')
+  @UsePipes(new ZodValidationPipe(SearchShopsQuerySchema))
+  async searchShops(@Body() dto: SearchShopsQueryDto) {
+    try {
+      return await this.prismaService.$transaction(async (prisma) => {
+        return await this.barberShopService.searchShops(dto, prisma);
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Search shops failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to search shops',
         error: 'Internal server error',
       });
     }
