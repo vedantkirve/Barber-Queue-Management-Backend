@@ -5,7 +5,6 @@ import {
   Body,
   Request,
   Put,
-  Query,
   Param,
   BadRequestException,
   HttpException,
@@ -19,10 +18,6 @@ import {
   GetAllShopsQuerySchema,
   GetAllShopsQueryDto,
 } from './dto/get-all-shops.dto';
-import {
-  SearchShopsQuerySchema,
-  SearchShopsQueryDto,
-} from './dto/search-shops.dto';
 import { Public } from 'src/auth/decorators/is-public.decorator';
 
 @Controller('barber-shop')
@@ -81,15 +76,12 @@ export class BarberShopController {
   }
 
   @Public()
-  @Get('all')
+  @Post('all')
   @UsePipes(new ZodValidationPipe(GetAllShopsQuerySchema))
-  async getAllShops(@Query() query: GetAllShopsQueryDto) {
+  async getAllShops(@Body() dto: GetAllShopsQueryDto) {
     try {
-      const page = query.page || 1;
-      const limit = query.limit || 10;
-
       return await this.prismaService.$transaction(async (prisma) => {
-        return await this.barberShopService.getAllShops(page, limit, prisma);
+        return await this.barberShopService.getAllShops(dto, prisma);
       });
     } catch (error) {
       if (error instanceof HttpException) {
@@ -122,27 +114,6 @@ export class BarberShopController {
       console.error('Get shop details failed:', error);
       throw new BadRequestException({
         message: 'Failed to get shop details',
-        error: 'Internal server error',
-      });
-    }
-  }
-
-  @Public()
-  @Post('search')
-  @UsePipes(new ZodValidationPipe(SearchShopsQuerySchema))
-  async searchShops(@Body() dto: SearchShopsQueryDto) {
-    try {
-      return await this.prismaService.$transaction(async (prisma) => {
-        return await this.barberShopService.searchShops(dto, prisma);
-      });
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      console.error('Search shops failed:', error);
-      throw new BadRequestException({
-        message: 'Failed to search shops',
         error: 'Internal server error',
       });
     }

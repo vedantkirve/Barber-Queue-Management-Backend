@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BarberShop, Prisma } from '@prisma/client';
 import { UpdateShopDto } from './dto/update-shop.dto';
+import { QueueState } from '../common/enums/queue-state.enum';
+import { GetAllShopsQueryDto } from './dto/get-all-shops.dto';
 
 @Injectable()
 export class BarberShopService {
@@ -190,66 +192,21 @@ export class BarberShopService {
     return updatedShop;
   }
 
-  // Get all shops with pagination
-  async getAllShops(page: number, limit: number, prisma: any) {
+  // Get all shops with optional search and pagination
+  async getAllShops(dto: GetAllShopsQueryDto, prisma: any) {
+    console.log('dto-->>', dto);
+
+    const { page = 1, limit = 10, query, queue_info = false } = dto;
     const skip = (page - 1) * limit;
 
-    const [shops, total] = await Promise.all([
-      prisma.barberShop.findMany({
-        where: {
-          status: 'active',
-        },
-        select: {
-          id: true,
-          name: true,
-          address: true,
-          latitude: true,
-          longitude: true,
-          isOpen: true,
-          createdAt: true,
-          updatedAt: true,
-          _count: {
-            select: {
-              services: {
-                where: { status: 'active' },
-              },
-              visits: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        skip,
-        take: limit,
-      }),
-      prisma.barberShop.count({
-        where: {
-          status: 'active',
-        },
-      }),
-    ]);
-
-    return {
-      data: shops,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
-  }
-
-  // Search shops by name or address
-  async searchShops(dto: any, prisma: any) {
-    const { query, page = 1, limit = 10 } = dto;
-
-    const skip = (page - 1) * limit;
-
-    const whereClause = {
+    // Build where clause - only add search if query exists
+    const whereClause: any = {
       status: 'active',
-      OR: [
+    };
+
+    // Only add search conditions if query is provided and not empty
+    if (query && query.trim()) {
+      whereClause.OR = [
         {
           name: {
             contains: query,
@@ -262,30 +219,43 @@ export class BarberShopService {
             mode: 'insensitive' as any,
           },
         },
-      ],
+      ];
+    }
+
+    // Build select clause - conditionally include queue info
+    const selectClause: any = {
+      id: true,
+      name: true,
+      address: true,
+      latitude: true,
+      longitude: true,
+      isOpen: true,
+      createdAt: true,
+      updatedAt: true,
+      _count: {
+        select: {
+          services: {
+            where: { status: 'active' },
+          },
+          visits: true,
+        },
+      },
     };
+
+    // Add queue count if queue_info is true
+    if (queue_info) {
+      selectClause._count.select.shopQueues = {
+        where: {
+          state: QueueState.IN_QUEUE,
+          status: 'active',
+        },
+      };
+    }
 
     const [shops, total] = await Promise.all([
       prisma.barberShop.findMany({
         where: whereClause,
-        select: {
-          id: true,
-          name: true,
-          address: true,
-          latitude: true,
-          longitude: true,
-          isOpen: true,
-          createdAt: true,
-          updatedAt: true,
-          _count: {
-            select: {
-              services: {
-                where: { status: 'active' },
-              },
-              visits: true,
-            },
-          },
-        },
+        select: selectClause,
         orderBy: {
           createdAt: 'desc',
         },

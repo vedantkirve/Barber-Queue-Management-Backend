@@ -1,18 +1,10 @@
 import { z } from 'zod';
 
 export const GetAllShopsQuerySchema = z.object({
-  page: z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val, 10) : 1))
-    .refine((val) => val > 0, { message: 'Page must be greater than 0' }),
-  limit: z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val, 10) : 10))
-    .refine((val) => val > 0 && val <= 100, {
-      message: 'Limit must be between 1 and 100',
-    }),
+  page: z.number().optional().default(1),
+  limit: z.number().optional().default(10),
+  query: z.string().optional(),
+  queue_info: z.boolean().optional().default(false), // Include queue count info
 });
 
 export type GetAllShopsQueryDto = z.infer<typeof GetAllShopsQuerySchema>;
