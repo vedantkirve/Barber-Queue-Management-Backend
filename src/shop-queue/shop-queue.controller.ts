@@ -8,6 +8,10 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { JoinQueueDto, JoinQueueSchema } from './dto/join-queue.dto';
+import {
+  GetMyQueueStatusDto,
+  GetMyQueueStatusSchema,
+} from './dto/get-my-queue-status.dto';
 import { ShopQueueService } from './shop-queue.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { PrismaService } from '../prisma/prisma.service';
@@ -36,6 +40,42 @@ export class ShopQueueController {
       console.error('Join queue failed:', error);
       throw new BadRequestException({
         message: 'Failed to join queue',
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  @Post('my-status')
+  @UsePipes(new ZodValidationPipe(GetMyQueueStatusSchema))
+  async getMyQueueStatus(
+    @Body() dto: GetMyQueueStatusDto,
+    @Request() req: any,
+  ) {
+    try {
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        throw new BadRequestException({
+          message: 'User not authenticated',
+          error: 'Missing user ID',
+        });
+      }
+
+      return await this.prisma.$transaction(async (prisma) => {
+        return await this.shopQueueService.getMyQueueStatus(
+          userId,
+          dto,
+          prisma,
+        );
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Get queue status failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to get queue status',
         error: 'Internal server error',
       });
     }
