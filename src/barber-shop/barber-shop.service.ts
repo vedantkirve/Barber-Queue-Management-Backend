@@ -92,6 +92,12 @@ export class BarberShopService {
             price: 'asc',
           },
         },
+        shopQueues: {
+          where: {
+            state: QueueState.IN_QUEUE,
+            status: 'active',
+          },
+        },
         _count: {
           select: {
             visits: true,
