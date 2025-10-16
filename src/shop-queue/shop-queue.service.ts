@@ -96,9 +96,6 @@ export class ShopQueueService {
       },
     });
 
-    return {
-      message: 'Successfully joined the queue',
-      data: queueEntry,
-    };
+    return queueEntry;
   }
 }
