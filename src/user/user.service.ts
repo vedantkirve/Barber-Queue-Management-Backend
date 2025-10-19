@@ -227,6 +227,30 @@ export class UserService {
     }
   }
 
+  async findUsersByIds(userIds: string[], prisma: any): Promise<User[]> {
+    try {
+      return await prisma.user.findMany({
+        where: {
+          id: {
+            in: userIds,
+          },
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phoneNumber: true,
+          email: true,
+          role: true,
+          status: true,
+        },
+      });
+    } catch (error) {
+      console.error('Error finding users by IDs:', error);
+      return [];
+    }
+  }
+
   async updateUserProfile(
     userId: string,
     updateData: UpdateUserProfileDto,

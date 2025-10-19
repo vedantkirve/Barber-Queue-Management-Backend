@@ -183,6 +183,7 @@ export class ShopQueueService {
     const { barberShopId, state, page, limit } = dto;
     const skip = (page - 1) * limit;
 
+    // First, get queue entries and total count
     const [queueEntries, total] = await Promise.all([
       prisma.shopQueue.findMany({
         where: {
@@ -232,8 +233,25 @@ export class ShopQueueService {
       }),
     ]);
 
+    // Extract unique user IDs from queue entries
+    const userIds = [...new Set(queueEntries.map((entry) => entry.userId))];
+
+    console.log('userIds-->>', userIds);
+
+    // Get all user information in one query
+    const users = await this.userService.findUsersByIds(userIds, prisma);
+
+    // Create a map of user data for quick lookup
+    const userMap = new Map(users.map((user) => [user.id, user]));
+
+    // Merge user information into queue entries and prepare response
+    const data = queueEntries.map((entry) => ({
+      ...entry,
+      user: userMap.get(entry.userId) || null,
+    }));
+
     return {
-      data: queueEntries,
+      data,
       pagination: {
         page,
         limit,
