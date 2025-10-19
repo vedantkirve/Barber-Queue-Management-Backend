@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JoinQueueDto } from './dto/join-queue.dto';
+
+import { UpdateQueueStateDto } from './dto/update-queue-state.dto';
 import { UserService } from '../user/user.service';
 import { Prisma } from '@prisma/client';
 import { QueueState } from '../common/enums/queue-state.enum';
@@ -176,6 +178,20 @@ export class ShopQueueService {
   }
 
   @Public()
+  async updateQueueState(
+    dto: UpdateQueueStateDto,
+    prisma: Prisma.TransactionClient,
+  ) {
+    const { queueId, state } = dto;
+
+    const updatedQueue = await prisma.shopQueue.update({
+      where: { id: queueId, status: 'active' },
+      data: { state },
+    });
+
+    return updatedQueue;
+  }
+
   async getQueueByState(
     dto: GetQueueByStateDto,
     prisma: Prisma.TransactionClient,
