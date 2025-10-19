@@ -12,8 +12,13 @@ import {
   GetMyQueueStatusDto,
   GetMyQueueStatusSchema,
 } from './dto/get-my-queue-status.dto';
+import {
+  GetQueueByStateDto,
+  GetQueueByStateSchema,
+} from './dto/get-queue-by-state.dto';
 import { ShopQueueService } from './shop-queue.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { Public } from '../auth/decorators/is-public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('shop-queue')
@@ -76,6 +81,27 @@ export class ShopQueueController {
       console.error('Get queue status failed:', error);
       throw new BadRequestException({
         message: 'Failed to get queue status',
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  @Public()
+  @Post('state')
+  @UsePipes(new ZodValidationPipe(GetQueueByStateSchema))
+  async getQueueByState(@Body() dto: GetQueueByStateDto) {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        return await this.shopQueueService.getQueueByState(dto, prisma);
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Get queue by state failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to get queue by state',
         error: 'Internal server error',
       });
     }

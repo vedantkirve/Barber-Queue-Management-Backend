@@ -10,6 +10,8 @@ import { UserService } from '../user/user.service';
 import { Prisma } from '@prisma/client';
 import { QueueState } from '../common/enums/queue-state.enum';
 import { GetMyQueueStatusDto } from './dto/get-my-queue-status.dto';
+import { GetQueueByStateDto } from './dto/get-queue-by-state.dto';
+import { Public } from 'src/auth/decorators/is-public.decorator';
 
 @Injectable()
 export class ShopQueueService {
@@ -169,6 +171,74 @@ export class ShopQueueService {
         peopleAhead,
         totalInQueue,
         estimatedWaitingPeople: peopleAhead,
+      },
+    };
+  }
+
+  @Public()
+  async getQueueByState(
+    dto: GetQueueByStateDto,
+    prisma: Prisma.TransactionClient,
+  ) {
+    const { barberShopId, state, page, limit } = dto;
+    const skip = (page - 1) * limit;
+
+    const [queueEntries, total] = await Promise.all([
+      prisma.shopQueue.findMany({
+        where: {
+          barberShopId,
+          state,
+          status: 'active',
+        },
+        select: {
+          id: true,
+          userId: true,
+          state: true,
+          joinedAt: true,
+          servedAt: true,
+          visit: {
+            select: {
+              totalAmount: true,
+              visitServices: {
+                where: {
+                  status: 'active',
+                },
+                select: {
+                  id: true,
+                  service: {
+                    select: {
+                      serviceName: true,
+                      price: true,
+                      estimatedTime: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          joinedAt: 'asc',
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.shopQueue.count({
+        where: {
+          barberShopId,
+          state,
+          status: 'active',
+        },
+      }),
+    ]);
+
+    return {
+      data: queueEntries,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
