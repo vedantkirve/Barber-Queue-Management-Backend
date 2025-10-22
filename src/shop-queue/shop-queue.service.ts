@@ -276,4 +276,63 @@ export class ShopQueueService {
       },
     };
   }
+
+  async getUserCurrentQueues(userId: string, prisma: Prisma.TransactionClient) {
+    try {
+      // Get current queue entries (in_queue or picked state)
+      const currentQueues = await prisma.shopQueue.findMany({
+        where: {
+          userId,
+          state: { in: ['in_queue', 'picked'] },
+          status: 'active',
+        },
+        orderBy: { joinedAt: 'asc' },
+        include: {
+          barberShop: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              latitude: true,
+              longitude: true,
+              isOpen: true,
+            },
+          },
+        },
+      });
+
+      // Calculate queue positions and estimated wait times
+      const enrichedQueues = await Promise.all(
+        currentQueues.map(async (queue) => {
+          // Get queue position (how many people are ahead)
+          const queuePosition = await prisma.shopQueue.count({
+            where: {
+              barberShopId: queue.barberShopId,
+              state: 'in_queue',
+              joinedAt: { lt: queue.joinedAt },
+              status: 'active',
+            },
+          });
+
+          // Calculate estimated wait time based on queue position
+          // Assuming average service time of 30 minutes per customer
+          const estimatedWaitTime =
+            queue.state === 'picked' ? 0 : (queuePosition + 1) * 30;
+
+          return {
+            ...queue,
+            queuePosition: queuePosition + 1, // Position starts from 1
+            estimatedWaitTime,
+          };
+        }),
+      );
+
+      return enrichedQueues;
+    } catch (error: any) {
+      throw new BadRequestException({
+        message: 'Error fetching user current queues',
+        error: error?.message || error,
+      });
+    }
+  }
 }

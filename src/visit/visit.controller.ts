@@ -23,11 +23,13 @@ import {
   AnalyticsQueryDto,
 } from './dto/analytics-query.dto';
 import { DeleteVisitSchema, DeleteVisitDto } from './dto/delete-visit.dto';
+import { UserService } from 'src/user/user.service';
 
 @Controller('visit')
 export class VisitController {
   constructor(
     private readonly visitService: VisitService,
+    private readonly userService: UserService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -133,6 +135,28 @@ export class VisitController {
       throw new BadRequestException({
         message: 'Failed to deactivate visit',
         error: error,
+      });
+    }
+  }
+
+  @Get('dashboard')
+  @UsePipes()
+  async getCustomerDashboard(@Request() req: any) {
+    try {
+      const userId = req.user?.userId;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        return await this.visitService.getCustomerDashboard(userId, prisma);
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Get customer dashboard failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to get customer dashboard',
+        error: 'Internal server error',
       });
     }
   }

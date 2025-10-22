@@ -7,8 +7,9 @@ import {
 import { BarberShopService } from '../barber-shop/barber-shop.service';
 import { UserService } from '../user/user.service';
 import { VisitServiceService } from '../visit-service/visit-service.service';
-import { Visit } from '@prisma/client';
+import { Prisma, Visit } from '@prisma/client';
 import { CreateVisitDto } from './dto/create-visit.dto';
+import { ShopQueueService } from 'src/shop-queue/shop-queue.service';
 
 @Injectable()
 export class VisitService {
@@ -16,6 +17,7 @@ export class VisitService {
     private readonly barberShopService: BarberShopService,
     private readonly userService: UserService,
     private readonly visitServiceService: VisitServiceService,
+    private readonly shopQueueService: ShopQueueService,
   ) {}
 
   async createVisit(
@@ -315,5 +317,80 @@ export class VisitService {
     }
 
     return result;
+  }
+
+  async getUserRecentVisits(userId: string, prisma: Prisma.TransactionClient) {
+    try {
+      const visits = await prisma.visit.findMany({
+        where: {
+          userId,
+          status: 'active',
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: {
+          barberShop: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              latitude: true,
+              longitude: true,
+            },
+          },
+          visitServices: {
+            include: {
+              service: {
+                select: {
+                  id: true,
+                  serviceName: true,
+                  estimatedTime: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return visits;
+    } catch (error: any) {
+      throw new BadRequestException({
+        message: 'Error fetching user recent visits',
+        error: error?.message || error,
+      });
+    }
+  }
+
+  async getCustomerDashboard(userId: string, prisma: Prisma.TransactionClient) {
+    // Verify user exists and is a customer
+    const user = await prisma.user.findUnique({
+      where: { id: userId, role: 'customer' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phoneNumber: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        message: 'User not found or not a customer',
+        error: 'User does not exist or invalid role',
+      });
+    }
+
+    // Use dedicated helper methods
+    const [recentVisits, currentQueues] = await Promise.all([
+      this.getUserRecentVisits(userId, prisma),
+      this.shopQueueService.getUserCurrentQueues(userId, prisma),
+    ]);
+
+    return {
+      user,
+      recentVisits,
+      currentQueues,
+    };
   }
 }

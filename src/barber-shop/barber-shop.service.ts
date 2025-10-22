@@ -283,4 +283,47 @@ export class BarberShopService {
       },
     };
   }
+
+  async getMultipleShops(barberShopIds: string[], prisma: any) {
+    try {
+      // Verify all barbershop IDs exist
+      const existingShops = await prisma.barberShop.findMany({
+        where: {
+          id: { in: barberShopIds },
+          status: 'active',
+        },
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          isOpen: true,
+          status: true,
+        },
+      });
+
+      const existingShopIds = existingShops.map((shop) => shop.id);
+      const invalidShopIds = barberShopIds.filter(
+        (id) => !existingShopIds.includes(id),
+      );
+
+      if (invalidShopIds.length > 0) {
+        throw new NotFoundException({
+          message: 'Invalid barbershop IDs provided',
+          error: `Barbershops with IDs ${invalidShopIds.join(', ')} do not exist`,
+        });
+      }
+
+      return existingShops;
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new NotFoundException({
+        message: 'Error fetching barbershops',
+        error: error?.message || error,
+      });
+    }
+  }
 }
