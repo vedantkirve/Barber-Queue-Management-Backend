@@ -160,4 +160,28 @@ export class VisitController {
       });
     }
   }
+
+  @Post('update-state-create-visit')
+  async updateStateAndCreateVisit(@Body() body: any, @Request() req: any) {
+    try {
+      const userId = req.user?.userId;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        return await this.visitService.updateStateAndCreateVisit(
+          userId,
+          body,
+          prisma,
+        );
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new BadRequestException({
+        message: 'Failed to update state and create visit',
+        error: 'Internal server error',
+      });
+    }
+  }
 }

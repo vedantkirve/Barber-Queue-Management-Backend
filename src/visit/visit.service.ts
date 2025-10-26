@@ -10,6 +10,7 @@ import { VisitServiceService } from '../visit-service/visit-service.service';
 import { Prisma, Visit } from '@prisma/client';
 import { CreateVisitDto } from './dto/create-visit.dto';
 import { ShopQueueService } from 'src/shop-queue/shop-queue.service';
+import { QueueState } from 'src/common/enums/queue-state.enum';
 
 @Injectable()
 export class VisitService {
@@ -25,7 +26,7 @@ export class VisitService {
     userId: string,
     prisma: any,
   ) {
-    const { barberShopId, services, totalAmount, customerInfo } =
+    const { barberShopId, services, totalAmount, customerInfo, shopQueueId } =
       createVisitDto;
 
     // 1. Check if valid shop exists using BarberShopService
@@ -81,6 +82,7 @@ export class VisitService {
     const visit: Visit = await prisma.visit.create({
       data: {
         userId: visitUserId,
+        shopQueueId,
         barberShopId,
         totalAmount,
         status: 'active',
@@ -391,6 +393,46 @@ export class VisitService {
       user,
       recentVisits,
       currentQueues,
+    };
+  }
+
+  async updateStateAndCreateVisit(
+    userId: string,
+    dto: any,
+    prisma: Prisma.TransactionClient,
+  ) {
+    const { queueId, state } = dto;
+    console.log('state-->>', state);
+
+    if (state != (QueueState.SERVED as string)) {
+      throw new BadRequestException({
+        message:
+          'Invalid state update. State must be SERVED to create a visit.',
+        error: 'Invalid state transition',
+      });
+    }
+
+    const updatedQueue = await this.shopQueueService.updateQueueState(
+      {
+        queueId,
+        state: state,
+      },
+      prisma,
+    );
+
+    const payload: CreateVisitDto = {
+      barberShopId: updatedQueue.barberShopId,
+      shopQueueId: updatedQueue.id,
+      services: dto.services,
+      totalAmount: dto.totalAmount,
+      customerInfo: dto.customerInfo,
+    };
+
+    const newVisit = await this.createVisit(payload, userId, prisma);
+
+    return {
+      updatedQueue,
+      newVisit,
     };
   }
 }
