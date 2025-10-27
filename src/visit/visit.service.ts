@@ -419,13 +419,16 @@ export class VisitService {
       },
       prisma,
     );
+    const customerInfo = {
+      userId: updatedQueue.userId,
+    };
 
     const payload: CreateVisitDto = {
       barberShopId: updatedQueue.barberShopId,
       shopQueueId: updatedQueue.id,
       services: dto.services,
       totalAmount: dto.totalAmount,
-      customerInfo: dto.customerInfo,
+      customerInfo: customerInfo,
     };
 
     const newVisit = await this.createVisit(payload, userId, prisma);
