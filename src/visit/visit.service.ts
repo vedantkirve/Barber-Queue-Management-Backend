@@ -9,6 +9,7 @@ import { UserService } from '../user/user.service';
 import { VisitServiceService } from '../visit-service/visit-service.service';
 import { Prisma, Visit } from '@prisma/client';
 import { CreateVisitDto } from './dto/create-visit.dto';
+import { UpdateStateAndCreateVisitDto } from './dto/update-state-create-visit.dto';
 import { ShopQueueService } from 'src/shop-queue/shop-queue.service';
 import { QueueState } from 'src/common/enums/queue-state.enum';
 
@@ -398,13 +399,14 @@ export class VisitService {
 
   async updateStateAndCreateVisit(
     userId: string,
-    dto: any,
+    dto: UpdateStateAndCreateVisitDto,
     prisma: Prisma.TransactionClient,
   ) {
-    const { queueId, state } = dto;
-    console.log('state-->>', state);
+    console.log('dto>>', dto);
 
-    if (state != (QueueState.SERVED as string)) {
+    const { queueId, state, services, totalAmount } = dto;
+
+    if (state !== QueueState.SERVED) {
       throw new BadRequestException({
         message:
           'Invalid state update. State must be SERVED to create a visit.',
@@ -415,10 +417,11 @@ export class VisitService {
     const updatedQueue = await this.shopQueueService.updateQueueState(
       {
         queueId,
-        state: state,
+        state,
       },
       prisma,
     );
+
     const customerInfo = {
       userId: updatedQueue.userId,
     };
@@ -426,9 +429,9 @@ export class VisitService {
     const payload: CreateVisitDto = {
       barberShopId: updatedQueue.barberShopId,
       shopQueueId: updatedQueue.id,
-      services: dto.services,
-      totalAmount: dto.totalAmount,
-      customerInfo: customerInfo,
+      services,
+      totalAmount,
+      customerInfo,
     };
 
     const newVisit = await this.createVisit(payload, userId, prisma);

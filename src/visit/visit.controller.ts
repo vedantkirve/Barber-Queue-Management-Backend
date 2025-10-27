@@ -180,7 +180,7 @@ export class VisitController {
 
       throw new BadRequestException({
         message: 'Failed to update state and create visit',
-        error: 'Internal server error',
+        error: error,
       });
     }
   }
