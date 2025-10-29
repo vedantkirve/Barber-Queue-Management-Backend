@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -37,6 +38,14 @@ export class AuthService {
       }
     }
 
+    // If any matching account exists without a password set, guide client to set one
+    const hasAccountWithoutPassword = users.some((u) => !u.password);
+    if (hasAccountWithoutPassword) {
+      throw new UnauthorizedException(
+        'Account exists without password. Please set your password to continue.',
+      );
+    }
+
     throw new UnauthorizedException('Invalid email/phone or password');
   }
 
@@ -50,6 +59,11 @@ export class AuthService {
   }
 
   async register(user: User) {
+    // Basic guard: password is required for registration or completing account
+    if (!user?.password || user.password.trim() === '') {
+      throw new BadRequestException('Password is required');
+    }
+
     // Check if user already exists with the same phone number
     if (user.phoneNumber) {
       const existingUser = await this.userService.findOne({
@@ -57,12 +71,33 @@ export class AuthService {
       });
 
       if (existingUser) {
+        // If the existing account was pre-created without a password,
+        // do NOT set the password here. Instead, return a structured
+        // response that tells the client to call the separate
+        // "set-password" endpoint to complete account setup.
+        if (!existingUser.password) {
+          return {
+            needsPasswordSetup: true,
+            message:
+              'Account exists without password. Please set your password to continue.',
+            user: {
+              id: existingUser.id,
+              phoneNumber: existingUser.phoneNumber,
+              email: existingUser.email,
+              firstName: existingUser.firstName,
+              lastName: existingUser.lastName,
+            },
+          };
+        }
+
+        // Otherwise, a fully registered account already exists
         throw new BadRequestException(
           'User already exists with the same phone number',
         );
       }
     }
 
+    // No existing user with this phone number; create a fresh user
     const hashedPassword = await this.hashPassword(user.password);
 
     const createdUser = await this.userService.createUser({
@@ -72,7 +107,55 @@ export class AuthService {
 
     const token = this.generateToken({ userId: createdUser.id });
 
-    return { user: createdUser, token: token };
+    return { user: createdUser, token };
+  }
+
+  /**
+   * Complete account setup for users who were pre-created without a password.
+   * Only allowed when the existing user has no password set.
+   */
+  async setPassword(payload: {
+    phoneNumber?: string;
+    id?: string;
+    password: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  }) {
+    const { phoneNumber, id, password, firstName, lastName, email } = payload;
+
+    if (!password || password.trim() === '') {
+      throw new BadRequestException('Password is required');
+    }
+
+    // Find user by provided identifier
+    const existingUser = await this.userService.findOne({
+      phoneNumber,
+      id,
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (existingUser.password) {
+      throw new BadRequestException('User already has a password');
+    }
+
+    const hashedPassword = await this.hashPassword(password);
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        password: hashedPassword,
+        firstName: firstName ?? existingUser.firstName,
+        lastName: lastName ?? existingUser.lastName,
+        email: email ?? existingUser.email,
+      },
+    });
+
+    const token = this.generateToken({ userId: updatedUser.id });
+    return { user: updatedUser, token };
   }
 
   async validateToken(token: string): Promise<any> {

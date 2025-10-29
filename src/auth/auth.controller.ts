@@ -6,6 +6,7 @@ import { Public } from './decorators/is-public.decorator';
 import { AuthStatusDto } from './dto/auth-status.dto';
 import { LoginDto, LoginSchema } from './dto/login.dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { SetPasswordDto, SetPasswordSchema } from './dto/set-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -16,9 +17,23 @@ export class AuthController {
   async register(@Body() user: User) {
     console.log('user-->>', user);
 
-    const { user: createdUser, token } = await this.authService.register(user);
+    const result = await this.authService.register(user);
 
+    // If the service indicates password setup is required, forward that
+    if ((result as any).needsPasswordSetup) {
+      return result;
+    }
+
+    const { user: createdUser, token } = result;
     return { ...createdUser, token };
+  }
+
+  @Public()
+  @Post('set-password')
+  @UsePipes(new ZodValidationPipe(SetPasswordSchema))
+  async setPassword(@Body() payload: SetPasswordDto) {
+    const { user, token } = await this.authService.setPassword(payload as any);
+    return { ...user, token };
   }
 
   @Public()
