@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Public } from './auth/decorators/is-public.decorator';
 import { PrismaService } from './prisma/prisma.service';
@@ -17,12 +17,24 @@ export class AppController {
 
   @Public()
   @Get('health')
-  async health() {
+  async health(@Query('deep') deep?: string) {
+    // By default, do not hit the DB; report last-known status from PrismaService
+    if (deep !== '1') {
+      const db = this.prisma.isConnected ? 'connected' : 'disconnected';
+      return { status: 'ok', db, mode: 'cached' };
+    }
+
+    // Optional deep probe that actually pings the DB
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-      return { status: 'ok', db: 'connected' };
-    } catch (e) {
-      return { status: 'ok', db: 'disconnected', error: e.message };
+      return { status: 'ok', db: 'connected', mode: 'deep' };
+    } catch (e: any) {
+      return {
+        status: 'ok',
+        db: 'disconnected',
+        mode: 'deep',
+        error: e?.message,
+      };
     }
   }
 }
