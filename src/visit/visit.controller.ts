@@ -41,6 +41,7 @@ export class VisitController {
   ) {
     try {
       const userId = req.user?.userId;
+      console.log('userId->>', userId);
 
       return await this.prisma.$transaction(async (prisma) => {
         return await this.visitService.createVisit(
