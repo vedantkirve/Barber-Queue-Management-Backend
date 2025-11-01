@@ -7,6 +7,8 @@ import { ServiceModule } from './service/service.module';
 import { BarberShopModule } from './barber-shop/barber-shop.module';
 import { VisitModule } from './visit/visit.module';
 import { VisitServiceModule } from './visit-service/visit-service.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ShopQueueModule } from './shop-queue/shop-queue.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { VisitServiceModule } from './visit-service/visit-service.module';
     BarberShopModule,
     VisitModule,
     VisitServiceModule,
+    NotificationsModule,
+    ShopQueueModule,
   ],
   controllers: [AppController],
   providers: [AppService],

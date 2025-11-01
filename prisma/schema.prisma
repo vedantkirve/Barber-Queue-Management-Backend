@@ -26,8 +26,9 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  barberShops BarberShop[]
-  visits      Visit[] // Add relation to visits
+  barberShops       BarberShop[]
+  visits            Visit[] // Add relation to visits
+  pushSubscriptions PushSubscription[]
 }
 
 enum Role {
@@ -47,9 +48,10 @@ model BarberShop {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id])
-  services Service[]
-  visits   Visit[] // Add relation to visits
+  user       User        @relation(fields: [userId], references: [id])
+  services   Service[]
+  visits     Visit[] // Add relation to visits
+  shopQueues ShopQueue[] // Add relation to shop queues
 }
 
 model Service {
@@ -67,13 +69,15 @@ model Service {
 }
 
 model Visit {
-  id           String   @id @default(uuid())
+  id           String     @id @default(uuid())
   userId       String? // Optional - for unregistered customers
   barberShopId String
   totalAmount  Float
-  status       String   @default("active")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  status       String     @default("active")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  shopQueueId  String?    @unique // Optional - for linking to ShopQueue (one-to-one)
+  shopQueue    ShopQueue? @relation(fields: [shopQueueId], references: [id])
 
   user          User?          @relation(fields: [userId], references: [id])
   barberShop    BarberShop     @relation(fields: [barberShopId], references: [id])
@@ -93,4 +97,42 @@ model VisitService {
   service Service @relation(fields: [serviceId], references: [id])
 
   @@unique([visitId, serviceId]) // Prevent duplicate services in same visit
+}
+
+model ShopQueue {
+  id           String     @id @default(uuid())
+  barberShopId String
+  userId       String // Reference to user (no relation)
+  state        QueueState @default(in_queue)
+  joinedAt     DateTime   @default(now())
+  servedAt     DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  status       String     @default("active") // Add status field for soft delete
+
+  barberShop BarberShop @relation(fields: [barberShopId], references: [id])
+  visit      Visit? // One-to-one relation with Visit
+
+  @@index([barberShopId, state])
+}
+
+enum QueueState {
+  in_queue
+  picked
+  served
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  endpoint   String   @unique
+  keysAuth   String
+  keysP256dh String
+  status     String   @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
 }
