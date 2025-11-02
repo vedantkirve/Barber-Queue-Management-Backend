@@ -14,12 +14,14 @@ import { QueueState } from '../common/enums/queue-state.enum';
 import { GetMyQueueStatusDto } from './dto/get-my-queue-status.dto';
 import { GetQueueByStateDto } from './dto/get-queue-by-state.dto';
 import { Public } from 'src/auth/decorators/is-public.decorator';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class ShopQueueService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly userService: UserService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async joinQueue(
@@ -183,11 +185,55 @@ export class ShopQueueService {
     prisma: Prisma.TransactionClient,
   ) {
     const { queueId, state } = dto;
+    // Ensure the queue entry exists and is active before updating
+    const existing = await prisma.shopQueue.findFirst({
+      where: { id: queueId, status: 'active' },
+      select: { id: true, barberShopId: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException({
+        message: 'Queue entry not found or inactive',
+        error: 'Invalid queue id',
+      });
+    }
 
     const updatedQueue = await prisma.shopQueue.update({
-      where: { id: queueId, status: 'active' },
+      where: { id: queueId },
       data: { state },
+      select: { id: true, state: true, barberShopId: true, userId: true },
     });
+
+    // If a customer has been picked, notify the next one in the queue
+    if (state === QueueState.PICKED) {
+      const nextInQueue = await prisma.shopQueue.findFirst({
+        where: {
+          barberShopId: updatedQueue.barberShopId,
+          state: QueueState.IN_QUEUE,
+          status: 'active',
+        },
+        orderBy: { joinedAt: 'asc' },
+        select: {
+          id: true,
+          userId: true,
+          barberShop: { select: { name: true } },
+        },
+      });
+
+      console.log('nextInQueue-->>', nextInQueue);
+
+      if (nextInQueue) {
+        // Fire-and-forget notification; do not block the response if push fails
+        await this.notificationsService.sendNotification(
+          {
+            userId: nextInQueue.userId,
+            title: "You're next in line",
+            message: `Get ready! You're next at ${nextInQueue.barberShop.name}.`,
+          },
+          prisma,
+        );
+      }
+    }
 
     return updatedQueue;
   }
