@@ -7,6 +7,7 @@ export const SetPasswordSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   email: z.string().email('Email must be valid').optional(),
+  phoneNumber: z.string().optional(),
 });
 
 export type SetPasswordDto = z.infer<typeof SetPasswordSchema>;

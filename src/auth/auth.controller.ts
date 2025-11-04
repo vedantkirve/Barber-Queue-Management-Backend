@@ -32,7 +32,7 @@ export class AuthController {
   @Post('set-password')
   @UsePipes(new ZodValidationPipe(SetPasswordSchema))
   async setPassword(@Body() payload: SetPasswordDto) {
-    const { user, token } = await this.authService.setPassword(payload as any);
+    const { user, token } = await this.authService.setPassword(payload);
     return { ...user, token };
   }
 

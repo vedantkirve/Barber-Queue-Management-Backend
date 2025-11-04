@@ -10,6 +10,7 @@ import { UserService } from 'src/user/user.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { AuthStatusDto } from './dto/auth-status.dto';
+import { SetPasswordDto } from './dto/set-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -114,14 +115,7 @@ export class AuthService {
    * Complete account setup for users who were pre-created without a password.
    * Only allowed when the existing user has no password set.
    */
-  async setPassword(payload: {
-    phoneNumber?: string;
-    id?: string;
-    password: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    email?: string | null;
-  }) {
+  async setPassword(payload: SetPasswordDto) {
     const { phoneNumber, id, password, firstName, lastName, email } = payload;
 
     if (!password || password.trim() === '') {
