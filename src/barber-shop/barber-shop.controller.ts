@@ -14,6 +14,11 @@ import { BarberShopService } from './barber-shop.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { UpdateShopSchema, UpdateShopDto } from './dto/update-shop.dto';
+import {
+  GetAllShopsQuerySchema,
+  GetAllShopsQueryDto,
+} from './dto/get-all-shops.dto';
+import { Public } from 'src/auth/decorators/is-public.decorator';
 
 @Controller('barber-shop')
 export class BarberShopController {
@@ -65,6 +70,50 @@ export class BarberShopController {
       console.error('Update shop failed:', error);
       throw new BadRequestException({
         message: 'Failed to update shop',
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  @Public()
+  @Post('all')
+  @UsePipes(new ZodValidationPipe(GetAllShopsQuerySchema))
+  async getAllShops(@Body() dto: GetAllShopsQueryDto) {
+    try {
+      return await this.prismaService.$transaction(async (prisma) => {
+        return await this.barberShopService.getAllShops(dto, prisma);
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Get all shops failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to get shops',
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  @Public()
+  @Get(':id')
+  async getShopDetails(@Param('id') barberShopId: string) {
+    try {
+      return await this.prismaService.$transaction(async (prisma) => {
+        return await this.barberShopService.getShopDetails(
+          barberShopId,
+          prisma,
+        );
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Get shop details failed:', error);
+      throw new BadRequestException({
+        message: 'Failed to get shop details',
         error: 'Internal server error',
       });
     }

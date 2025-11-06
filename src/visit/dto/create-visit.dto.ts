@@ -16,6 +16,7 @@ export const CustomerInfoSchema = z.object({
 
 export const CreateVisitSchema = z.object({
   barberShopId: z.string().uuid('Barber shop ID must be a valid UUID'),
+  shopQueueId: z.string().optional(),
   totalAmount: z.number().positive('Total amount must be a positive number'),
   customerInfo: CustomerInfoSchema,
   services: z.array(ServiceSchema).min(1, 'At least one service is required'),

@@ -7,8 +7,11 @@ import {
 import { BarberShopService } from '../barber-shop/barber-shop.service';
 import { UserService } from '../user/user.service';
 import { VisitServiceService } from '../visit-service/visit-service.service';
-import { Visit } from '@prisma/client';
+import { Prisma, Visit } from '@prisma/client';
 import { CreateVisitDto } from './dto/create-visit.dto';
+import { UpdateStateAndCreateVisitDto } from './dto/update-state-create-visit.dto';
+import { ShopQueueService } from 'src/shop-queue/shop-queue.service';
+import { QueueState } from 'src/common/enums/queue-state.enum';
 
 @Injectable()
 export class VisitService {
@@ -16,6 +19,7 @@ export class VisitService {
     private readonly barberShopService: BarberShopService,
     private readonly userService: UserService,
     private readonly visitServiceService: VisitServiceService,
+    private readonly shopQueueService: ShopQueueService,
   ) {}
 
   async createVisit(
@@ -23,7 +27,7 @@ export class VisitService {
     userId: string,
     prisma: any,
   ) {
-    const { barberShopId, services, totalAmount, customerInfo } =
+    const { barberShopId, services, totalAmount, customerInfo, shopQueueId } =
       createVisitDto;
 
     // 1. Check if valid shop exists using BarberShopService
@@ -79,6 +83,7 @@ export class VisitService {
     const visit: Visit = await prisma.visit.create({
       data: {
         userId: visitUserId,
+        shopQueueId,
         barberShopId,
         totalAmount,
         status: 'active',
@@ -315,5 +320,125 @@ export class VisitService {
     }
 
     return result;
+  }
+
+  async getUserRecentVisits(userId: string, prisma: Prisma.TransactionClient) {
+    try {
+      const visits = await prisma.visit.findMany({
+        where: {
+          userId,
+          status: 'active',
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: {
+          barberShop: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              latitude: true,
+              longitude: true,
+            },
+          },
+          visitServices: {
+            include: {
+              service: {
+                select: {
+                  id: true,
+                  serviceName: true,
+                  estimatedTime: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return visits;
+    } catch (error: any) {
+      throw new BadRequestException({
+        message: 'Error fetching user recent visits',
+        error: error?.message || error,
+      });
+    }
+  }
+
+  async getCustomerDashboard(userId: string, prisma: Prisma.TransactionClient) {
+    // Verify user exists and is a customer
+    const user = await prisma.user.findUnique({
+      where: { id: userId, role: 'customer' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phoneNumber: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        message: 'User not found or not a customer',
+        error: 'User does not exist or invalid role',
+      });
+    }
+
+    // Use dedicated helper methods
+    const [recentVisits, currentQueues] = await Promise.all([
+      this.getUserRecentVisits(userId, prisma),
+      this.shopQueueService.getUserCurrentQueues(userId, prisma),
+    ]);
+
+    return {
+      user,
+      recentVisits,
+      currentQueues,
+    };
+  }
+
+  async updateStateAndCreateVisit(
+    userId: string,
+    dto: UpdateStateAndCreateVisitDto,
+    prisma: Prisma.TransactionClient,
+  ) {
+    console.log('dto>>', dto);
+
+    const { queueId, state, services, totalAmount } = dto;
+
+    if (state !== QueueState.SERVED) {
+      throw new BadRequestException({
+        message:
+          'Invalid state update. State must be SERVED to create a visit.',
+        error: 'Invalid state transition',
+      });
+    }
+
+    const updatedQueue = await this.shopQueueService.updateQueueState(
+      {
+        queueId,
+        state,
+      },
+      prisma,
+    );
+
+    const customerInfo = {
+      userId: updatedQueue.userId,
+    };
+
+    const payload: CreateVisitDto = {
+      barberShopId: updatedQueue.barberShopId,
+      shopQueueId: updatedQueue.id,
+      services,
+      totalAmount,
+      customerInfo,
+    };
+
+    const newVisit = await this.createVisit(payload, userId, prisma);
+
+    return {
+      updatedQueue,
+      newVisit,
+    };
   }
 }
