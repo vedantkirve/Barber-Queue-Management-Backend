@@ -137,7 +137,7 @@ export class BarberShopService {
             estimatedWaitTime: queueForThisShop.estimatedWaitTime,
             joinedAt: queueForThisShop.joinedAt,
           }
-        : {},
+        : null,
     };
   }
 
