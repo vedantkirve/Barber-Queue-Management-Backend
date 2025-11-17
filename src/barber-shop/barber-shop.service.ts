@@ -4,10 +4,14 @@ import { BarberShop, Prisma } from '@prisma/client';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { QueueState } from '../common/enums/queue-state.enum';
 import { GetAllShopsQueryDto } from './dto/get-all-shops.dto';
+import { ShopQueueService } from '../shop-queue/shop-queue.service';
 
 @Injectable()
 export class BarberShopService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly shopQueueService: ShopQueueService,
+  ) {}
 
   async createShop(createShopDto: any, userId: string) {
     const { name, address, latitude, longitude, isOpen = true } = createShopDto;
@@ -64,7 +68,11 @@ export class BarberShopService {
   }
 
   // Get shop details with services for public view
-  async getShopDetails(barberShopId: string, prisma: any) {
+  async getShopDetails(
+    barberShopId: string,
+    userId: string,
+    prisma: Prisma.TransactionClient,
+  ) {
     const barberShop = await prisma.barberShop.findUnique({
       where: {
         id: barberShopId,
@@ -110,7 +118,27 @@ export class BarberShopService {
       throw new NotFoundException('Barber shop not found');
     }
 
-    return barberShop;
+    const userQueues = await this.shopQueueService.getUserCurrentQueues(
+      userId,
+      prisma,
+    );
+
+    const queueForThisShop = userQueues.find(
+      (queue) => queue.barberShopId === barberShopId,
+    );
+
+    return {
+      ...barberShop,
+      userQueueStatus: queueForThisShop
+        ? {
+            queueId: queueForThisShop.id,
+            state: queueForThisShop.state,
+            queuePosition: queueForThisShop.queuePosition,
+            estimatedWaitTime: queueForThisShop.estimatedWaitTime,
+            joinedAt: queueForThisShop.joinedAt,
+          }
+        : {},
+    };
   }
 
   // Updated to always require prisma instance

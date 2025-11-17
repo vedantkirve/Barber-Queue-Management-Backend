@@ -96,13 +96,22 @@ export class BarberShopController {
     }
   }
 
-  @Public()
   @Get(':id')
-  async getShopDetails(@Param('id') barberShopId: string) {
+  async getShopDetails(@Param('id') barberShopId: string, @Request() req: any) {
     try {
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        throw new BadRequestException({
+          message: 'Unauthorized access',
+          error: 'Unauthorized access',
+        });
+      }
+
       return await this.prismaService.$transaction(async (prisma) => {
         return await this.barberShopService.getShopDetails(
           barberShopId,
+          userId,
           prisma,
         );
       });
