@@ -363,7 +363,7 @@ export class ShopQueueService {
           // Calculate estimated wait time based on queue position
           // Assuming average service time of 30 minutes per customer
           const estimatedWaitTime =
-            queue.state === 'picked' ? 0 : (queuePosition + 1) * 30;
+            queue.state === 'picked' ? 0 : (queuePosition + 1) * 10;
 
           return {
             ...queue,
