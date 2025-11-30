@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Get, Req, UsePipes } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Get,
+  Req,
+  UsePipes,
+  Patch,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { User } from '@prisma/client';
 import { Request } from 'express';
@@ -7,6 +15,10 @@ import { AuthStatusDto } from './dto/auth-status.dto';
 import { LoginDto, LoginSchema } from './dto/login.dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { SetPasswordDto, SetPasswordSchema } from './dto/set-password.dto';
+import {
+  ChangePasswordDto,
+  ChangePasswordSchema,
+} from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -56,5 +68,12 @@ export class AuthController {
   @Post('logout')
   async logout() {
     return { message: 'Logged out successfully' };
+  }
+
+  @Patch('change-password')
+  @UsePipes(new ZodValidationPipe(ChangePasswordSchema))
+  async changePassword(@Req() req, @Body() dto: ChangePasswordDto) {
+    const userId = req.user.userId;
+    return this.authService.changePassword(userId, dto);
   }
 }
