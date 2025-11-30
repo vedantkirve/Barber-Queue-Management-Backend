@@ -234,10 +234,12 @@ export class AuthService {
       );
 
     const hashedPassword = await this.hashPassword(newPassword);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
-    });
+
+    await this.userService.updateUserPassword(
+      userId,
+      hashedPassword,
+      this.prisma,
+    );
 
     return { message: 'Password updated successfully' };
   }

@@ -6,6 +6,8 @@ import {
   Req,
   UsePipes,
   Patch,
+  HttpException,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { User } from '@prisma/client';
@@ -73,7 +75,21 @@ export class AuthController {
   @Patch('change-password')
   @UsePipes(new ZodValidationPipe(ChangePasswordSchema))
   async changePassword(@Req() req, @Body() dto: ChangePasswordDto) {
-    const userId = req.user.userId;
-    return this.authService.changePassword(userId, dto);
+    try {
+      const userId = req.user?.userId;
+
+      return await this.authService.changePassword(userId, dto);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Change password failed:', error);
+
+      throw new BadRequestException({
+        message: 'Failed to change password',
+        error: 'Internal server error',
+      });
+    }
   }
 }

@@ -298,4 +298,41 @@ export class UserService {
       });
     }
   }
+
+  async updateUserPassword(
+    userId: string,
+    hashedPassword: string,
+    prisma: any,
+  ) {
+    try {
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!existingUser) {
+        throw new NotFoundException({
+          message: 'User not found',
+          error: 'User does not exist',
+        });
+      }
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+
+      return {
+        message: 'Password updated successfully',
+      };
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new BadRequestException({
+        message: 'Error updating password',
+        error: error?.message || error,
+      });
+    }
+  }
 }
