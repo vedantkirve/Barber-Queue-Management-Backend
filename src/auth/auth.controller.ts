@@ -1,4 +1,14 @@
-import { Body, Controller, Post, Get, Req, UsePipes } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Get,
+  Req,
+  UsePipes,
+  Patch,
+  HttpException,
+  BadRequestException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { User } from '@prisma/client';
 import { Request } from 'express';
@@ -7,6 +17,10 @@ import { AuthStatusDto } from './dto/auth-status.dto';
 import { LoginDto, LoginSchema } from './dto/login.dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { SetPasswordDto, SetPasswordSchema } from './dto/set-password.dto';
+import {
+  ChangePasswordDto,
+  ChangePasswordSchema,
+} from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -56,5 +70,26 @@ export class AuthController {
   @Post('logout')
   async logout() {
     return { message: 'Logged out successfully' };
+  }
+
+  @Patch('change-password')
+  @UsePipes(new ZodValidationPipe(ChangePasswordSchema))
+  async changePassword(@Req() req, @Body() dto: ChangePasswordDto) {
+    try {
+      const userId = req.user?.userId;
+
+      return await this.authService.changePassword(userId, dto);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      console.error('Change password failed:', error);
+
+      throw new BadRequestException({
+        message: 'Failed to change password',
+        error: 'Internal server error',
+      });
+    }
   }
 }

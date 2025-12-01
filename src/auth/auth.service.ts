@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { AuthStatusDto } from './dto/auth-status.dto';
 import { SetPasswordDto } from './dto/set-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -202,6 +203,45 @@ export class AuthService {
       isAuthenticated: true,
       user: safeUser,
     };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const { currentPassword, newPassword } = dto;
+
+    const user = await this.userService.findOne({ id: userId });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.password) {
+      throw new BadRequestException('User has no password set');
+    }
+
+    const isMatch = await this.comparePasswords(currentPassword, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const isSamePassword = await this.comparePasswords(
+      newPassword,
+      user.password,
+    );
+
+    if (isSamePassword)
+      throw new BadRequestException(
+        'New password cannot be the same as the current password',
+      );
+
+    const hashedPassword = await this.hashPassword(newPassword);
+
+    await this.userService.updateUserPassword(
+      userId,
+      hashedPassword,
+      this.prisma,
+    );
+
+    return { message: 'Password updated successfully' };
   }
 
   private async hashPassword(password: string): Promise<string> {
